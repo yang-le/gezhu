@@ -1,0 +1,256 @@
+%%      Gezhu Typesetting Macro or TeX/LaTeX
+%%      (Gezhu: Splitted Annotation (warichu in Japanese))
+%%      File:   gezhu.sty
+%%      Author: Dian YIN (yindian@ustc)
+%%      Descr:  This macro file provides an environment \withgezhu ...
+%%              \endwithgezhu which which one can typeset gezhu by inserting
+%%              double-line annotations using |{text}. There is no limitations
+%%              in using whatever commands both in withgezhu environment and
+%%              inside |{}, theoretically. The macro use \endgraf to end the
+%%              current paragraph in order to determine the h-offset of the
+%%              current position, so any parshapes will lose efficacy.
+%%      Hist:   07.3.5.         Inspired by previous work (xguji) and thought.
+%%              07.3.6-3.7.     Framework done. Buggy.
+%%              07.3.10.        First release comes out. Works to my expectance.
+%%              07.3.11.        Extra \parskip removed.
+%%              07.3.25.        Improved balancing method to prevent overfull.
+%%                              Fixed bug when \penalty\gezhu@breakpenalty
+%%      TODO:   1. Reserve interline skip.
+%%              2. Better width adjusting method.
+%%              3. Make the source more commented and readable.
+%%              4. Add a more friendly interface for use under LaTeX. e.g. 
+%%                 \begin{withgezhu}[raise=-2pt,lines=2,everygezhu={\tiny}]
+%%              5. Eliminate the annoying warnings of under/overfull boxes.
+%%              6. Find bugs and fix...
+%%      Note:   Chances are that the texts may exceed the right boundary 
+%%              because of punctuation prohibitions. I have no idea to solve 
+%%              this. In the next version I'll introduce an option ``hsplit''
+%%              with which specified the macro will use \hsplit to split the 
+%%              gezhu text, in which way this bug may be eliminated.
+\catcode`@=11
+\ifx\gezhu@defined\@undefined
+\def\gezhu@defined{\relax}
+\showboxbreadth=999
+\showboxdepth=999
+\newcount\gezhu@lines
+\newcount\gezhu@breakpenalty
+\newskip\gezhu@cjkglue
+\newdimen\gezhu@gezhuraise
+\newbox\gezhu@tmpbox
+\newbox\gezhu@tmpboy
+\newbox\gezhu@tmpboz
+\newbox\gezhu@tmpb@x
+\newbox\gezhu@tmpb@y
+\newbox\gezhu@tmpb@z
+\newbox\gezhu@tmpb@w
+\newcount\gezhu@tmpcnt
+\newdimen\gezhu@tmpdim
+\newdimen\gezhu@tmpdil
+\newdimen\gezhu@bigem
+\newtoks\everygezhu
+\newtoks\gezhu@strut
+\gezhu@lines=2
+\gezhu@cjkglue=0pt plus 0.1em minus 0.1em
+\gezhu@gezhuraise=-2pt
+\gezhu@breakpenalty=-9999
+\everygezhu={\fiverm}
+\gezhu@strut={\vphantom{()}}
+\def\gezhu@makehboxofhboxesandcount{% output is \gezhu@tmpb@y
+  \setbox\gezhu@tmpb@y=\hbox{}%
+  \gezhu@tmpcnt=0
+  \loop
+    \setbox\gezhu@tmpb@z=\lastbox
+    \ifhbox\gezhu@tmpb@z
+      \setbox\gezhu@tmpb@y=\hbox{\box\gezhu@tmpb@z\unhbox\gezhu@tmpb@y}%
+      \advance\gezhu@tmpcnt by 1
+      \unskip
+      \unpenalty
+  \repeat
+}
+\def\gezhu@getfirsthboxes#1{% #1:precomputed loop count  in: \gezhu@tmpb@y
+  \hskip 0pt
+  \unhbox\gezhu@tmpb@y
+  \setbox\gezhu@tmpb@x=\copy\voidb@x% first boxes
+  \setbox\gezhu@tmpb@y=\copy\voidb@x% last boxes
+  \gezhu@tmpcnt=0
+  \loop
+    \ifnum #1>\gezhu@tmpcnt
+      \setbox\gezhu@tmpb@z=\lastbox
+      \setbox\gezhu@tmpb@y=\vbox{\box\gezhu@tmpb@z\unvbox\gezhu@tmpb@y}%
+      \advance\gezhu@tmpcnt by 1
+  \repeat
+  \loop
+    \setbox\gezhu@tmpb@z=\lastbox
+    \ifhbox\gezhu@tmpb@z
+      \setbox\gezhu@tmpb@x=\vbox{\box\gezhu@tmpb@z\unvbox\gezhu@tmpb@x}%
+  \repeat
+  \unskip
+}
+\def\gezhu@removehboxes{%
+  \setbox\gezhu@tmpb@z=\lastbox
+  \ifhbox\gezhu@tmpb@z
+    {\gezhu@removehboxes}% for use local tmpb@z
+    \unhbox\gezhu@tmpb@z
+    \unskip % removes \rightskip
+    \hskip\gezhu@cjkglue
+  \fi
+}%
+{
+\catcode`|=\active
+\gdef\gezhu@makespecials{%
+  \catcode`|=\active
+  \def|{\gezhu}%
+}
+}
+\def\withgezhu{\setbox\gezhu@tmpbox=\vbox\bgroup
+  \def\gezhu##1{%
+    \endgraf
+    \setbox\gezhu@tmpbox=\lastbox
+    \setbox\gezhu@tmpbox=\hbox{\unhbox\gezhu@tmpbox\unskip\unskip\unpenalty}%
+    \unskip % remove interline skip in internal vertical mode
+    \vskip -\parskip
+    \noindent\copy\gezhu@tmpbox
+    \hskip\gezhu@cjkglue
+    \setbox\gezhu@tmpboy=\hbox{M}%
+    \gezhu@bigem=\wd\gezhu@tmpboy
+    \begingroup
+    \let\gezhu=\relax
+    \the\everygezhu
+    \gezhu@tmpdim=\hsize
+    \advance\gezhu@tmpdim by -\wd\gezhu@tmpbox
+    \ifdim\gezhu@tmpdim > 0.7em
+      \setbox\gezhu@tmpboy=\vbox{\hsize=\gezhu@tmpdim
+        \leftskip=0pt\rightskip=0pt plus 0.1em minus 0.1em%\gezhu@tmpdim
+        \pretolerance=9999\tolerance=9999\parindent=0pt
+        \hyphenpenalty=9999\exhyphenpenalty=9999
+        ##1}%
+      \setbox\gezhu@tmpboy=\vbox{%
+        \unvbox\gezhu@tmpboy
+        \gezhu@makehboxofhboxesandcount
+        \ifnum\gezhu@tmpcnt > \gezhu@lines
+          \advance\gezhu@tmpcnt by -\gezhu@lines
+        \fi
+        \expandafter\gezhu@getfirsthboxes\expandafter{\the\gezhu@tmpcnt}%
+        \global\setbox\gezhu@tmpb@x=\box\gezhu@tmpb@x
+        \global\setbox\gezhu@tmpb@y=\box\gezhu@tmpb@y
+      }%
+      \ifdim\wd\gezhu@tmpb@x > 0pt
+        \raise\gezhu@gezhuraise\box\gezhu@tmpb@x
+        \penalty\gezhu@breakpenalty
+      \fi
+    \else
+      \setbox\gezhu@tmpb@y=\vbox{\hsize=\maxdimen\hbox{##1}}%
+      \hskip 0pt plus 0.7em
+      \penalty\gezhu@breakpenalty
+    \fi
+    \setbox\gezhu@tmpboy=\vbox{%  the hsize is the main text hsize
+      \leftskip=0pt\rightskip=0pt plus 0.1em minus 0.1em%\gezhu@tmpdim
+      \pretolerance=9999\tolerance=9999\parindent=0pt
+      \hyphenpenalty=9999\exhyphenpenalty=9999
+      \unvbox\gezhu@tmpb@y
+      \gezhu@removehboxes
+    }%
+    \setbox\gezhu@tmpboy=\vbox{%
+      \unvbox\gezhu@tmpboy
+      \gezhu@makehboxofhboxesandcount
+      \global\gezhu@tmpcnt=\gezhu@tmpcnt
+      \global\setbox\gezhu@tmpb@x=\box\gezhu@tmpb@x
+      \global\setbox\gezhu@tmpb@y=\box\gezhu@tmpb@y
+    }%
+    \loop
+      \advance\gezhu@tmpcnt by -\gezhu@lines
+      \ifnum\gezhu@tmpcnt > 0% enough lines for construct a whole line
+        \expandafter\gezhu@getfirsthboxes\expandafter{\the\gezhu@tmpcnt}%
+        \setbox\gezhu@tmpbox=\hbox{\box\gezhu@tmpb@x}%
+        \raise\gezhu@gezhuraise\box\gezhu@tmpbox
+        \penalty\gezhu@breakpenalty
+    \repeat
+    % enter balancing module
+    \ifhbox\gezhu@tmpb@y % no \gezhu@getfirsthboxes executed
+      \advance\gezhu@tmpcnt by \gezhu@lines
+      \expandafter\gezhu@getfirsthboxes\expandafter{\the\gezhu@tmpcnt}%
+    \fi
+    \setbox\gezhu@tmpboy=\vbox{%
+      \unvbox\gezhu@tmpb@y
+      \gezhu@makehboxofhboxesandcount
+      \global\gezhu@tmpcnt=\gezhu@tmpcnt
+      \global\setbox\gezhu@tmpb@x=\box\gezhu@tmpb@x
+      \global\setbox\gezhu@tmpb@y=\box\gezhu@tmpb@y
+    }%
+    \setbox\gezhu@tmpbox=\hbox{\unhbox\gezhu@tmpb@y\gezhu@removehboxes}%
+    \gezhu@tmpdim=\wd\gezhu@tmpbox
+    \divide\gezhu@tmpdim by \gezhu@lines
+    \loop
+      \setbox\gezhu@tmpboy=\vbox{\hsize=\gezhu@tmpdim
+        \leftskip=0pt\rightskip=0pt plus 0.1em minus 0.1em%\gezhu@tmpdim
+        \pretolerance=9999\tolerance=9999\parindent=0pt
+        \hyphenpenalty=9999\exhyphenpenalty=9999
+        \parfillskip=0pt
+        \unhcopy\gezhu@tmpbox
+      }%
+      \setbox\gezhu@tmpboy=\vbox{%
+        \unvbox\gezhu@tmpboy
+        \gezhu@makehboxofhboxesandcount
+        \global\gezhu@tmpcnt=\gezhu@tmpcnt
+        \global\setbox\gezhu@tmpb@x=\box\gezhu@tmpb@x
+        \global\setbox\gezhu@tmpb@y=\box\gezhu@tmpb@y
+      }%
+      \ifnum\gezhu@tmpcnt > \gezhu@lines
+        \advance\gezhu@tmpdim by 0.2em
+    \repeat
+    \gezhu@tmpdil=\gezhu@tmpdim
+    \setbox\gezhu@tmpboy=\vbox{%
+      \hskip 0pt
+      \unhbox\gezhu@tmpb@y
+      \loop
+        \setbox\gezhu@tmpb@x=\lastbox
+        \ifhbox\gezhu@tmpb@x
+          %\showbox\gezhu@tmpb@x
+          \setbox\gezhu@tmpb@x=\hbox{\unhbox\gezhu@tmpb@x}%
+          %\showbox\gezhu@tmpb@x
+          \ifdim\gezhu@tmpdil < \wd\gezhu@tmpb@x
+            \global\gezhu@tmpdil=\wd\gezhu@tmpb@x
+          \fi
+      \repeat
+      \unskip
+    }%
+    \advance\gezhu@tmpdil by -\gezhu@tmpdim
+    \ifdim\gezhu@tmpdil > 0.5em
+      \advance\gezhu@tmpdim by 0.7\gezhu@tmpdil
+    \fi
+    %\gezhu@tmpdil=\hsize
+    %\advance\gezhu@tmpdil by -\gezhu@tmpdim
+    %\ifdim\gezhu@tmpdil < \gezhu@bigem
+    %  \gezhu@tmpdim=\hsize
+    %\fi
+    %%%%
+    \setbox\gezhu@tmpboy=\vbox{\hsize=\gezhu@tmpdim
+      \leftskip=0pt\rightskip=0pt plus 0.1em minus 0.1em%\gezhu@tmpdim
+      \pretolerance=9999\tolerance=9999\parindent=0pt
+      \hyphenpenalty=9999\exhyphenpenalty=9999
+      \parfillskip=0pt
+      \unhcopy\gezhu@tmpbox
+    }%
+    \setbox\gezhu@tmpboy=\vbox{%
+      \unvbox\gezhu@tmpboy
+      \gezhu@makehboxofhboxesandcount
+      \global\gezhu@tmpcnt=\gezhu@tmpcnt
+      \global\setbox\gezhu@tmpb@x=\box\gezhu@tmpb@x
+      \global\setbox\gezhu@tmpb@y=\box\gezhu@tmpb@y
+    }%
+    \loop
+      \ifnum\gezhu@tmpcnt < \gezhu@lines
+        \advance\gezhu@tmpcnt by 1
+        \setbox\gezhu@tmpb@y=\hbox{\unhbox\gezhu@tmpb@y\hbox{\the\gezhu@strut}}%
+    \repeat
+    \gezhu@getfirsthboxes{0}%
+    \raise\gezhu@gezhuraise\box\gezhu@tmpb@x
+    \endgroup
+    \allowbreak
+    \hskip\gezhu@cjkglue
+    \allowbreak
+  }%
+  \gezhu@makespecials
+}
+\def\endwithgezhu{\egroup\unvbox\gezhu@tmpbox}
+\fi
