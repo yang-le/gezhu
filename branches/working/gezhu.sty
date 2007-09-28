@@ -16,6 +16,8 @@
 %%              07.3.25.        Improved balancing method to prevent overfull.
 %%                              Fixed bug when \penalty\gezhu@breakpenalty
 %%              07.5.13.        Added \beforegezhu and \aftergezhu
+%%              07.9.28.        New works began. Adding new features.
+%%                              More comments written. Interline skips reserved.
 %%      TODO:   1. Reserve interline skip.
 %%              2. Better width adjusting method.
 %%              3. Make the source more commented and readable.
@@ -30,9 +32,10 @@
 %%              gezhu text, in which way this bug may be eliminated.
 \catcode`@=11
 \ifx\gezhu@defined\@undefined
+\ifx\eTeXrevision\@undefined
+  \errmessge{eTeX required to use this package}
+\fi
 \def\gezhu@defined{\relax}
-\showboxbreadth=999
-\showboxdepth=999
 \newcount\gezhu@lines
 \newcount\gezhu@breakpenalty
 \newskip\gezhu@cjkglue
@@ -47,6 +50,7 @@
 \newcount\gezhu@tmpcnt
 \newdimen\gezhu@tmpdim
 \newdimen\gezhu@tmpdil
+\newdimen\gezhu@tmpskip
 \newdimen\gezhu@bigem
 \newtoks\everygezhu
 \newtoks\beforegezhu
@@ -60,7 +64,11 @@
 \beforegezhu={\hskip\gezhu@cjkglue}
 \aftergezhu={\hskip\gezhu@cjkglue}
 \gezhu@strut={\vphantom{()}}
-\def\gezhu@makehboxofhboxesandcount{% output is \gezhu@tmpb@y
+\def\gezhu@makehboxofhboxesandcount{%
+  % input:  none but previous vertical mode nodes
+  % output: \gezhu@tmpb@y as the result hbox
+  %         \gezhu@tmpcnt as the result count
+  % uses:   \gezhu@tmpb@z, \gezhu@tmpskip
   \setbox\gezhu@tmpb@y=\hbox{}%
   \gezhu@tmpcnt=0
   \loop
@@ -68,33 +76,61 @@
     \ifhbox\gezhu@tmpb@z
       \setbox\gezhu@tmpb@y=\hbox{\box\gezhu@tmpb@z\unhbox\gezhu@tmpb@y}%
       \advance\gezhu@tmpcnt by 1
+      \ifnum\lastnodetype = 11%  inter line skip
+        \gezhu@tmpskip=\lastskip
+        \setbox\gezhu@tmpb@y=\hbox{\hskip\gezhu@tmpskip\unhbox\gezhu@tmpb@y}%
+      \fi
       \unskip
       \unpenalty
   \repeat
 }
-\def\gezhu@getfirsthboxes#1{% #1:precomputed loop count  in: \gezhu@tmpb@y
-  \hskip 0pt
+\def\gezhu@getfirsthboxes#1{%
+  % input:  #1 as the precomputed loop count
+  %         \gezhu@tmpb@y as the hboxofhbox
+  % output: \gezhu@tmpb@x as vbox of the first hboxes
+  %         \gezhu@tmpb@y as vbox of the rest boxes without interlineskips
+  % uses:   \gezhu@tmpb@x, \gezhu@tmpb@y, \gezhu@tmpcnt, \gezhu@tmpskip
+  \hskip 111sp% manual boundary
   \unhbox\gezhu@tmpb@y
   \setbox\gezhu@tmpb@x=\copy\voidb@x% first boxes
   \setbox\gezhu@tmpb@y=\copy\voidb@x% last boxes
   \gezhu@tmpcnt=0
   \loop
     \ifnum #1>\gezhu@tmpcnt
+      \ifnum\lastnodetype = 11%  inter line skip
+        \unskip
+      \fi
       \setbox\gezhu@tmpb@z=\lastbox
       \setbox\gezhu@tmpb@y=\vbox{\box\gezhu@tmpb@z\unvbox\gezhu@tmpb@y}%
       \advance\gezhu@tmpcnt by 1
   \repeat
+  \ifnum\lastnodetype = 11%  skip
+    \unless\ifdim\lastskip = 111sp % not boundary
+      \unskip
+    \fi
+  \fi
   \loop
     \setbox\gezhu@tmpb@z=\lastbox
     \ifhbox\gezhu@tmpb@z
       \setbox\gezhu@tmpb@x=\vbox{\box\gezhu@tmpb@z\unvbox\gezhu@tmpb@x}%
+      \ifnum\lastnodetype = 11%  skip
+        \unless\ifdim\lastskip = 111sp % not boundary
+          \gezhu@tmpskip=\lastskip
+          \setbox\gezhu@tmpb@x=\vbox{\vskip\gezhu@tmpskip\unvbox\gezhu@tmpb@x}%
+          \unskip
+        \fi
+      \fi
   \repeat
-  \unskip
+  \unskip% remove \hskip 111sp
 }
 \def\gezhu@removehboxes{%
+  % input:  none but previous hbox nodes
+  % output: \gezhu@tmpb@y as the result hbox
+  %         \gezhu@tmpcnt as the result count
+  % uses:   \gezhu@tmpb@z, \gezhu@tmpskip
   \setbox\gezhu@tmpb@z=\lastbox
   \ifhbox\gezhu@tmpb@z
-    {\gezhu@removehboxes}% for use local tmpb@z
+    {\gezhu@removehboxes}% grouped for use local tmpb@z
     \unhbox\gezhu@tmpb@z
     \unskip % removes \rightskip
     \hskip\gezhu@cjkglue
@@ -108,6 +144,8 @@
 }
 }
 \def\withgezhu{\setbox\gezhu@tmpbox=\vbox\bgroup
+  \showboxbreadth=999
+  \showboxdepth=999
   \def\gezhu##1{%
     \endgraf
     \setbox\gezhu@tmpbox=\lastbox
@@ -123,15 +161,28 @@
     \the\everygezhu
     \gezhu@tmpdim=\hsize
     \advance\gezhu@tmpdim by -\wd\gezhu@tmpbox
-    \ifdim\gezhu@tmpdim > 0.7em
+    % now \gezhu@tmpdim is the width of the rest blank space of the line
+    \ifdim\gezhu@tmpdim > 0.7em % annotations at the end of line
+      % set parshape. First \gezhu@lines lines have length \gezhu@tmpdim
+      \edef\gezhu@parshape{\number\numexpr\gezhu@lines+1}
+      \gezhu@tmpcnt=0
+      \loop
+        \edef\gezhu@parshape{\gezhu@parshape{} 0pt \the\gezhu@tmpdim}
+        \ifnum\gezhu@tmpcnt < \gezhu@lines
+        \advance\gezhu@tmpcnt by 1
+      \repeat
+      \edef\gezhu@parshape{\gezhu@parshape{} 0pt \the\maxdimen}
+      % place gezhu annotation text in a vbox with specified parshape
       \setbox\gezhu@tmpboy=\vbox{\hsize=\gezhu@tmpdim
-        \leftskip=0pt\rightskip=0pt plus 0.1em minus 0.1em%\gezhu@tmpdim
+        \leftskip=0pt\rightskip=0pt
         \pretolerance=9999\tolerance=9999\parindent=0pt
         \hyphenpenalty=9999\exhyphenpenalty=9999
+        \parshape\gezhu@parshape\relax
         ##1}%
+      % extract the first lines and get the rest
       \setbox\gezhu@tmpboy=\vbox{%
         \unvbox\gezhu@tmpboy
-        \gezhu@makehboxofhboxesandcount
+        \gezhu@makehboxofhboxesandcount% output is \gezhu@tmpb@y
         \ifnum\gezhu@tmpcnt > \gezhu@lines
           \advance\gezhu@tmpcnt by -\gezhu@lines
         \fi
@@ -143,18 +194,32 @@
         \raise\gezhu@gezhuraise\box\gezhu@tmpb@x
         \penalty\gezhu@breakpenalty
       \fi
-    \else
+    \else % no annotations at the end of line
       \setbox\gezhu@tmpb@y=\vbox{\hsize=\maxdimen\hbox{##1}}%
-      \hskip 0pt plus 0.7em
+      %\hskip 0pt plus 0.7em
       \penalty\gezhu@breakpenalty
     \fi
+    % now \gezhu@tmpb@y holds the remaining annotation text
+    % set parshape. First \gezhu@lines lines have length \hsize
+    \edef\gezhu@parshape{\number\numexpr\gezhu@lines+1}
+    \gezhu@tmpcnt=0
+    \loop
+      \edef\gezhu@parshape{\gezhu@parshape{} 0pt \the\hsize}
+      \ifnum\gezhu@tmpcnt < \gezhu@lines
+      \advance\gezhu@tmpcnt by 1
+    \repeat
+    \edef\gezhu@parshape{\gezhu@parshape{} 0pt \the\maxdimen}
+    % place gezhu annotation text in a vbox with specified parshape
     \setbox\gezhu@tmpboy=\vbox{%  the hsize is the main text hsize
-      \leftskip=0pt\rightskip=0pt plus 0.1em minus 0.1em%\gezhu@tmpdim
+      \leftskip=0pt\rightskip=0pt% plus 0.1em minus 0.1em%\gezhu@tmpdim
       \pretolerance=9999\tolerance=9999\parindent=0pt
       \hyphenpenalty=9999\exhyphenpenalty=9999
+      \parshape\gezhu@parshape
       \unvbox\gezhu@tmpb@y
       \gezhu@removehboxes
+      \unskip % remove last \gezhu@cjkglue
     }%
+    % extract the first lines and get the rest
     \setbox\gezhu@tmpboy=\vbox{%
       \unvbox\gezhu@tmpboy
       \gezhu@makehboxofhboxesandcount
