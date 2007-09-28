@@ -15,6 +15,7 @@
 %%              07.3.11.        Extra \parskip removed.
 %%              07.3.25.        Improved balancing method to prevent overfull.
 %%                              Fixed bug when \penalty\gezhu@breakpenalty
+%%              07.5.13.        Added \beforegezhu and \aftergezhu
 %%      TODO:   1. Reserve interline skip.
 %%              2. Better width adjusting method.
 %%              3. Make the source more commented and readable.
@@ -48,12 +49,16 @@
 \newdimen\gezhu@tmpdil
 \newdimen\gezhu@bigem
 \newtoks\everygezhu
+\newtoks\beforegezhu
+\newtoks\aftergezhu
 \newtoks\gezhu@strut
 \gezhu@lines=2
 \gezhu@cjkglue=0pt plus 0.1em minus 0.1em
 \gezhu@gezhuraise=-2pt
 \gezhu@breakpenalty=-9999
 \everygezhu={\fiverm}
+\beforegezhu={\hskip\gezhu@cjkglue}
+\aftergezhu={\hskip\gezhu@cjkglue}
 \gezhu@strut={\vphantom{()}}
 \def\gezhu@makehboxofhboxesandcount{% output is \gezhu@tmpb@y
   \setbox\gezhu@tmpb@y=\hbox{}%
@@ -110,7 +115,7 @@
     \unskip % remove interline skip in internal vertical mode
     \vskip -\parskip
     \noindent\copy\gezhu@tmpbox
-    \hskip\gezhu@cjkglue
+    \the\beforegezhu
     \setbox\gezhu@tmpboy=\hbox{M}%
     \gezhu@bigem=\wd\gezhu@tmpboy
     \begingroup
@@ -247,7 +252,7 @@
     \raise\gezhu@gezhuraise\box\gezhu@tmpb@x
     \endgroup
     \allowbreak
-    \hskip\gezhu@cjkglue
+    \the\aftergezhu
     \allowbreak
   }%
   \gezhu@makespecials
