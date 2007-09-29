@@ -18,6 +18,8 @@
 %%              07.5.13.        Added \beforegezhu and \aftergezhu
 %%              07.9.28.        New works began. Adding new features.
 %%                              More comments written. Interline skips reserved.
+%%                              Using parshape in order to avoid cjkglue.
+%%              07.9.29.        Finished rewriting codes until balancing module.
 %%      TODO:   1. Reserve interline skip.
 %%              2. Better width adjusting method.
 %%              3. Make the source more commented and readable.
@@ -135,7 +137,20 @@
     \unskip % removes \rightskip
     \hskip\gezhu@cjkglue
   \fi
-}%
+}
+\def\gezhu@makeparshape#1{%
+  % set parshape. First \gezhu@lines lines have length #1
+  \begingroup % for local loop
+  \xdef\gezhu@parshape{\number\numexpr\gezhu@lines+1}%
+  \gezhu@tmpcnt=1
+  \loop
+    \xdef\gezhu@parshape{\gezhu@parshape\space 0pt \the#1}%
+    \ifnum\gezhu@tmpcnt < \gezhu@lines
+    \advance\gezhu@tmpcnt by 1
+  \repeat
+  \xdef\gezhu@parshape{\gezhu@parshape\space 0pt \the\maxdimen}%
+  \endgroup
+}
 {
 \catcode`|=\active
 \gdef\gezhu@makespecials{%
@@ -163,15 +178,7 @@
     \advance\gezhu@tmpdim by -\wd\gezhu@tmpbox
     % now \gezhu@tmpdim is the width of the rest blank space of the line
     \ifdim\gezhu@tmpdim > 0.7em % annotations at the end of line
-      % set parshape. First \gezhu@lines lines have length \gezhu@tmpdim
-      \edef\gezhu@parshape{\number\numexpr\gezhu@lines+1}
-      \gezhu@tmpcnt=0
-      \loop
-        \edef\gezhu@parshape{\gezhu@parshape{} 0pt \the\gezhu@tmpdim}
-        \ifnum\gezhu@tmpcnt < \gezhu@lines
-        \advance\gezhu@tmpcnt by 1
-      \repeat
-      \edef\gezhu@parshape{\gezhu@parshape{} 0pt \the\maxdimen}
+      \gezhu@makeparshape{\gezhu@tmpdim}%
       % place gezhu annotation text in a vbox with specified parshape
       \setbox\gezhu@tmpboy=\vbox{\hsize=\gezhu@tmpdim
         \leftskip=0pt\rightskip=0pt
@@ -179,7 +186,7 @@
         \hyphenpenalty=9999\exhyphenpenalty=9999
         \parshape\gezhu@parshape\relax
         ##1}%
-      % extract the first lines and get the rest
+      % extract the first \gezhu@lines lines and get the rest
       \setbox\gezhu@tmpboy=\vbox{%
         \unvbox\gezhu@tmpboy
         \gezhu@makehboxofhboxesandcount% output is \gezhu@tmpb@y
@@ -200,121 +207,119 @@
       \penalty\gezhu@breakpenalty
     \fi
     % now \gezhu@tmpb@y holds the remaining annotation text
-    % set parshape. First \gezhu@lines lines have length \hsize
-    \edef\gezhu@parshape{\number\numexpr\gezhu@lines+1}
-    \gezhu@tmpcnt=0
     \loop
-      \edef\gezhu@parshape{\gezhu@parshape{} 0pt \the\hsize}
-      \ifnum\gezhu@tmpcnt < \gezhu@lines
-      \advance\gezhu@tmpcnt by 1
-    \repeat
-    \edef\gezhu@parshape{\gezhu@parshape{} 0pt \the\maxdimen}
-    % place gezhu annotation text in a vbox with specified parshape
-    \setbox\gezhu@tmpboy=\vbox{%  the hsize is the main text hsize
-      \leftskip=0pt\rightskip=0pt% plus 0.1em minus 0.1em%\gezhu@tmpdim
-      \pretolerance=9999\tolerance=9999\parindent=0pt
-      \hyphenpenalty=9999\exhyphenpenalty=9999
-      \parshape\gezhu@parshape
-      \unvbox\gezhu@tmpb@y
-      \gezhu@removehboxes
-      \unskip % remove last \gezhu@cjkglue
-    }%
-    % extract the first lines and get the rest
-    \setbox\gezhu@tmpboy=\vbox{%
-      \unvbox\gezhu@tmpboy
-      \gezhu@makehboxofhboxesandcount
-      \global\gezhu@tmpcnt=\gezhu@tmpcnt
-      \global\setbox\gezhu@tmpb@x=\box\gezhu@tmpb@x
-      \global\setbox\gezhu@tmpb@y=\box\gezhu@tmpb@y
-    }%
-    \loop
-      \advance\gezhu@tmpcnt by -\gezhu@lines
-      \ifnum\gezhu@tmpcnt > 0% enough lines for construct a whole line
-        \expandafter\gezhu@getfirsthboxes\expandafter{\the\gezhu@tmpcnt}%
-        \setbox\gezhu@tmpbox=\hbox{\box\gezhu@tmpb@x}%
-        \raise\gezhu@gezhuraise\box\gezhu@tmpbox
-        \penalty\gezhu@breakpenalty
-    \repeat
-    % enter balancing module
-    \ifhbox\gezhu@tmpb@y % no \gezhu@getfirsthboxes executed
-      \advance\gezhu@tmpcnt by \gezhu@lines
-      \expandafter\gezhu@getfirsthboxes\expandafter{\the\gezhu@tmpcnt}%
-    \fi
-    \setbox\gezhu@tmpboy=\vbox{%
-      \unvbox\gezhu@tmpb@y
-      \gezhu@makehboxofhboxesandcount
-      \global\gezhu@tmpcnt=\gezhu@tmpcnt
-      \global\setbox\gezhu@tmpb@x=\box\gezhu@tmpb@x
-      \global\setbox\gezhu@tmpb@y=\box\gezhu@tmpb@y
-    }%
-    \setbox\gezhu@tmpbox=\hbox{\unhbox\gezhu@tmpb@y\gezhu@removehboxes}%
-    \gezhu@tmpdim=\wd\gezhu@tmpbox
-    \divide\gezhu@tmpdim by \gezhu@lines
-    \loop
-      \setbox\gezhu@tmpboy=\vbox{\hsize=\gezhu@tmpdim
-        \leftskip=0pt\rightskip=0pt plus 0.1em minus 0.1em%\gezhu@tmpdim
+      \message{LOOP-ING...}%
+      \gezhu@makeparshape{\hsize}%
+      % place gezhu annotation text in a vbox with specified parshape
+      \setbox\gezhu@tmpboy=\vbox{%  the hsize is the main text hsize
+        \leftskip=0pt\rightskip=0pt% plus 0.1em minus 0.1em%\gezhu@tmpdim
         \pretolerance=9999\tolerance=9999\parindent=0pt
         \hyphenpenalty=9999\exhyphenpenalty=9999
-        \parfillskip=0pt
-        \unhcopy\gezhu@tmpbox
+        \parshape\gezhu@parshape
+	\showbox\gezhu@tmpb@y
+        \unvbox\gezhu@tmpb@y
+        \gezhu@removehboxes
+        \unskip % remove last \gezhu@cjkglue
       }%
+      % extract the first \gezhu@lines lines and get the rest
       \setbox\gezhu@tmpboy=\vbox{%
         \unvbox\gezhu@tmpboy
-        \gezhu@makehboxofhboxesandcount
-        \global\gezhu@tmpcnt=\gezhu@tmpcnt
+        \gezhu@makehboxofhboxesandcount% output is \gezhu@tmpb@y
+        \ifnum\gezhu@tmpcnt > \gezhu@lines
+          \advance\gezhu@tmpcnt by -\gezhu@lines
+        \fi
+        \expandafter\gezhu@getfirsthboxes\expandafter{\the\gezhu@tmpcnt}%
         \global\setbox\gezhu@tmpb@x=\box\gezhu@tmpb@x
         \global\setbox\gezhu@tmpb@y=\box\gezhu@tmpb@y
       }%
-      \ifnum\gezhu@tmpcnt > \gezhu@lines
-        \advance\gezhu@tmpdim by 0.2em
+      \message{TMPCNT=\number\gezhu@tmpcnt, LINES=\number\gezhu@lines}%
+      \ifdim\wd\gezhu@tmpb@x > 0pt% enough for construct a whole big line
+        \setbox\gezhu@tmpbox=\hbox{\box\gezhu@tmpb@x}%
+        \raise\gezhu@gezhuraise\box\gezhu@tmpbox
+        \penalty\gezhu@breakpenalty
+        \message{Another LOOP \meaning\next}%
     \repeat
-    \gezhu@tmpdil=\gezhu@tmpdim
-    \setbox\gezhu@tmpboy=\vbox{%
-      \hskip 0pt
-      \unhbox\gezhu@tmpb@y
-      \loop
-        \setbox\gezhu@tmpb@x=\lastbox
-        \ifhbox\gezhu@tmpb@x
-          %\showbox\gezhu@tmpb@x
-          \setbox\gezhu@tmpb@x=\hbox{\unhbox\gezhu@tmpb@x}%
-          %\showbox\gezhu@tmpb@x
-          \ifdim\gezhu@tmpdil < \wd\gezhu@tmpb@x
-            \global\gezhu@tmpdil=\wd\gezhu@tmpb@x
-          \fi
-      \repeat
-      \unskip
-    }%
-    \advance\gezhu@tmpdil by -\gezhu@tmpdim
-    \ifdim\gezhu@tmpdil > 0.5em
-      \advance\gezhu@tmpdim by 0.7\gezhu@tmpdil
-    \fi
-    %\gezhu@tmpdil=\hsize
-    %\advance\gezhu@tmpdil by -\gezhu@tmpdim
-    %\ifdim\gezhu@tmpdil < \gezhu@bigem
-    %  \gezhu@tmpdim=\hsize
+    \message{LOOP exited.}%
+    %% enter balancing module
+    %\ifhbox\gezhu@tmpb@y % no \gezhu@getfirsthboxes executed
+    %  \advance\gezhu@tmpcnt by \gezhu@lines
+    %  \expandafter\gezhu@getfirsthboxes\expandafter{\the\gezhu@tmpcnt}%
     %\fi
-    %%%%
-    \setbox\gezhu@tmpboy=\vbox{\hsize=\gezhu@tmpdim
-      \leftskip=0pt\rightskip=0pt plus 0.1em minus 0.1em%\gezhu@tmpdim
-      \pretolerance=9999\tolerance=9999\parindent=0pt
-      \hyphenpenalty=9999\exhyphenpenalty=9999
-      \parfillskip=0pt
-      \unhcopy\gezhu@tmpbox
-    }%
-    \setbox\gezhu@tmpboy=\vbox{%
-      \unvbox\gezhu@tmpboy
-      \gezhu@makehboxofhboxesandcount
-      \global\gezhu@tmpcnt=\gezhu@tmpcnt
-      \global\setbox\gezhu@tmpb@x=\box\gezhu@tmpb@x
-      \global\setbox\gezhu@tmpb@y=\box\gezhu@tmpb@y
-    }%
-    \loop
-      \ifnum\gezhu@tmpcnt < \gezhu@lines
-        \advance\gezhu@tmpcnt by 1
-        \setbox\gezhu@tmpb@y=\hbox{\unhbox\gezhu@tmpb@y\hbox{\the\gezhu@strut}}%
-    \repeat
-    \gezhu@getfirsthboxes{0}%
-    \raise\gezhu@gezhuraise\box\gezhu@tmpb@x
+    %\setbox\gezhu@tmpboy=\vbox{%
+    %  \unvbox\gezhu@tmpb@y
+    %  \gezhu@makehboxofhboxesandcount
+    %  \global\gezhu@tmpcnt=\gezhu@tmpcnt
+    %  \global\setbox\gezhu@tmpb@x=\box\gezhu@tmpb@x
+    %  \global\setbox\gezhu@tmpb@y=\box\gezhu@tmpb@y
+    %}%
+    %\setbox\gezhu@tmpbox=\hbox{\unhbox\gezhu@tmpb@y\gezhu@removehboxes}%
+    %\gezhu@tmpdim=\wd\gezhu@tmpbox
+    %\divide\gezhu@tmpdim by \gezhu@lines
+    %\loop
+    %  \setbox\gezhu@tmpboy=\vbox{\hsize=\gezhu@tmpdim
+    %    \leftskip=0pt\rightskip=0pt plus 0.1em minus 0.1em%\gezhu@tmpdim
+    %    \pretolerance=9999\tolerance=9999\parindent=0pt
+    %    \hyphenpenalty=9999\exhyphenpenalty=9999
+    %    \parfillskip=0pt
+    %    \unhcopy\gezhu@tmpbox
+    %  }%
+    %  \setbox\gezhu@tmpboy=\vbox{%
+    %    \unvbox\gezhu@tmpboy
+    %    \gezhu@makehboxofhboxesandcount
+    %    \global\gezhu@tmpcnt=\gezhu@tmpcnt
+    %    \global\setbox\gezhu@tmpb@x=\box\gezhu@tmpb@x
+    %    \global\setbox\gezhu@tmpb@y=\box\gezhu@tmpb@y
+    %  }%
+    %  \ifnum\gezhu@tmpcnt > \gezhu@lines
+    %    \advance\gezhu@tmpdim by 0.2em
+    %\repeat
+    %\gezhu@tmpdil=\gezhu@tmpdim
+    %\setbox\gezhu@tmpboy=\vbox{%
+    %  \hskip 0pt
+    %  \unhbox\gezhu@tmpb@y
+    %  \loop
+    %    \setbox\gezhu@tmpb@x=\lastbox
+    %    \ifhbox\gezhu@tmpb@x
+    %      %\showbox\gezhu@tmpb@x
+    %      \setbox\gezhu@tmpb@x=\hbox{\unhbox\gezhu@tmpb@x}%
+    %      %\showbox\gezhu@tmpb@x
+    %      \ifdim\gezhu@tmpdil < \wd\gezhu@tmpb@x
+    %        \global\gezhu@tmpdil=\wd\gezhu@tmpb@x
+    %      \fi
+    %  \repeat
+    %  \unskip
+    %}%
+    %\advance\gezhu@tmpdil by -\gezhu@tmpdim
+    %\ifdim\gezhu@tmpdil > 0.5em
+    %  \advance\gezhu@tmpdim by 0.7\gezhu@tmpdil
+    %\fi
+    %%\gezhu@tmpdil=\hsize
+    %%\advance\gezhu@tmpdil by -\gezhu@tmpdim
+    %%\ifdim\gezhu@tmpdil < \gezhu@bigem
+    %%  \gezhu@tmpdim=\hsize
+    %%\fi
+    %%%%%
+    %\setbox\gezhu@tmpboy=\vbox{\hsize=\gezhu@tmpdim
+    %  \leftskip=0pt\rightskip=0pt plus 0.1em minus 0.1em%\gezhu@tmpdim
+    %  \pretolerance=9999\tolerance=9999\parindent=0pt
+    %  \hyphenpenalty=9999\exhyphenpenalty=9999
+    %  \parfillskip=0pt
+    %  \unhcopy\gezhu@tmpbox
+    %}%
+    %\setbox\gezhu@tmpboy=\vbox{%
+    %  \unvbox\gezhu@tmpboy
+    %  \gezhu@makehboxofhboxesandcount
+    %  \global\gezhu@tmpcnt=\gezhu@tmpcnt
+    %  \global\setbox\gezhu@tmpb@x=\box\gezhu@tmpb@x
+    %  \global\setbox\gezhu@tmpb@y=\box\gezhu@tmpb@y
+    %}%
+    %\loop
+    %  \ifnum\gezhu@tmpcnt < \gezhu@lines
+    %    \advance\gezhu@tmpcnt by 1
+    %    \setbox\gezhu@tmpb@y=\hbox{\unhbox\gezhu@tmpb@y\hbox{\the\gezhu@strut}}%
+    %\repeat
+    %\gezhu@getfirsthboxes{0}%
+    %\raise\gezhu@gezhuraise\box\gezhu@tmpb@x
     \endgroup
     \allowbreak
     \the\aftergezhu
