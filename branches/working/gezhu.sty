@@ -23,7 +23,9 @@
 %%                              Fixed some bugs of nested loop.
 %%              07.9.29.pm      More comments written. Finished the new
 %%                              implementation. Changed \gezhu@breakpenalty to
-%%                              -\@M.
+%%                              -\@M. Fixed bug that adding \gezhu@strut isn't
+%%                              enough for empty line compensation --- simply 
+%%                              by adding \baselineskip instead of \gezhu@strut
 %Changed \par in withgezhu environment.
 %%      TODO:   1. Reserve interline skip. Done.
 %%              2. Better width adjusting method. Seems better in this update.
@@ -331,15 +333,17 @@
       \unvbox\gezhu@tmpboy
       \gezhu@makehboxofhboxesandcount
       \global\gezhu@tmpcnt=\gezhu@tmpcnt
-      \global\setbox\gezhu@tmpb@x=\box\gezhu@tmpb@x
       \global\setbox\gezhu@tmpb@y=\box\gezhu@tmpb@y
     }%
+    % now \gezhu@tmpb@y is the hbox of hboxes with interlineskip
+    % next, compensate for empty lines
+    {\gezhu@getfirsthboxes{0}\global\setbox\gezhu@tmpb@x=\box\gezhu@tmpb@x}%
     \loop
       \ifnum\gezhu@tmpcnt < \gezhu@lines
         \advance\gezhu@tmpcnt by 1
-        \setbox\gezhu@tmpb@y=\hbox{\unhbox\gezhu@tmpb@y\hbox{\the\gezhu@strut}}%
+        %\setbox\gezhu@tmpb@y=\hbox{\unhbox\gezhu@tmpb@y\hbox{\the\gezhu@strut}}%
+        \setbox\gezhu@tmpb@x=\vbox{\unvbox\gezhu@tmpb@x\vskip\baselineskip}%
     \repeat
-    \gezhu@getfirsthboxes{0}%
     \raise\gezhu@gezhuraise\box\gezhu@tmpb@x
     \endgroup
     \allowbreak
