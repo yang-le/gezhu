@@ -26,19 +26,17 @@
 %%                              -\@M. Fixed bug that adding \gezhu@strut isn't
 %%                              enough for empty line compensation --- simply 
 %%                              by adding \baselineskip instead of \gezhu@strut
-%Changed \par in withgezhu environment.
+%%                              Added \hfuzz and \hbadness setting.
 %%      TODO:   1. Reserve interline skip. Done.
 %%              2. Better width adjusting method. Seems better in this update.
 %%              3. Make the source more commented and readable. Done.
 %%              4. Add a more friendly interface for use under LaTeX. e.g. 
 %%                 \begin{withgezhu}[raise=-2pt,lines=2,everygezhu={\tiny}]
 %%              5. Eliminate the annoying warnings of under/overfull boxes.
+%%                      Done.
 %%              6. Find bugs and fix...
 %%      Note:   Chances are that the texts may exceed the right boundary 
-%%              because of punctuation prohibitions. I have no idea to solve 
-%%              this. In the next version I'll introduce an option ``hsplit''
-%%              with which specified the macro will use \hsplit to split the 
-%%              gezhu text, in which way this bug may be eliminated.
+%%              because of punctuation prohibitions.
 \catcode`@=11
 \ifx\gezhu@defined\@undefined
 \ifx\eTeXrevision\@undefined
@@ -173,6 +171,7 @@
 \def\withgezhu{\setbox\gezhu@tmpbox=\vbox\bgroup
   \showboxbreadth=999
   \showboxdepth=999
+  \hbadness=\@M\hfuzz=1em
   \def\gezhu##1{%
     \endgraf
     \setbox\gezhu@tmpbox=\lastbox
