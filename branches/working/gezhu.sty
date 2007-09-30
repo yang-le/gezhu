@@ -26,15 +26,12 @@
 %%                              -\@M. Fixed bug that adding \gezhu@strut isn't
 %%                              enough for empty line compensation --- simply 
 %%                              by adding \baselineskip instead of \gezhu@strut
-%%                              Added \hfuzz and \hbadness setting.
-%%      TODO:   1. Reserve interline skip. Done.
-%%              2. Better width adjusting method. Seems better in this update.
-%%              3. Make the source more commented and readable. Done.
-%%              4. Add a more friendly interface for use under LaTeX. e.g. 
+%%                              Added \hfuzz and \hbadness to suppress warning.
+%%              07.9.30.        Want to change \par in withgezhu environment.
+%%                              New bug of unexcepted \parskip found.
+%%      TODO:   1. Add a more friendly interface for use under LaTeX. e.g. 
 %%                 \begin{withgezhu}[raise=-2pt,lines=2,everygezhu={\tiny}]
-%%              5. Eliminate the annoying warnings of under/overfull boxes.
-%%                      Done.
-%%              6. Find bugs and fix...
+%%              2. Find bugs and fix...
 %%      Note:   Chances are that the texts may exceed the right boundary 
 %%              because of punctuation prohibitions.
 \catcode`@=11
@@ -75,7 +72,7 @@
 \beforegezhu={\nobreak\hskip\gezhu@cjkglue}
 \aftergezhu={\hskip\gezhu@cjkglue}
 \gezhu@strut={\vphantom{()}}
-\def\gezhu@break{\penalty\gezhu@breakpenalty}
+\def\gezhu@break{\rlap{Break}\penalty\gezhu@breakpenalty}
 \def\gezhu@makehboxofhboxesandcount{%
   % input:  none but previous vertical mode nodes
   % output: \gezhu@tmpb@y as the result hbox, with interline skips
@@ -168,7 +165,7 @@
   \def|{\gezhu}%
 }
 }
-\def\withgezhu{\setbox\gezhu@tmpbox=\vbox\bgroup
+\def\withgezhu{\begingroup
   \showboxbreadth=999
   \showboxdepth=999
   \hbadness=\@M\hfuzz=1em
@@ -178,12 +175,13 @@
     \setbox\gezhu@tmpbox=\hbox{\unhbox\gezhu@tmpbox\unskip\unskip\unpenalty}%
     \unskip % remove interline skip in internal vertical mode
     \vskip -\parskip
-    \noindent\copy\gezhu@tmpbox
+    \noindent\rlap{Copy}\copy\gezhu@tmpbox
     \the\beforegezhu
     \setbox\gezhu@tmpboy=\hbox{M}%
     \gezhu@bigem=\wd\gezhu@tmpboy
     \begingroup
     \let\gezhu=\relax
+    \let\par\endgraf
     \the\everygezhu
     \gezhu@tmpdim=\hsize
     \advance\gezhu@tmpdim by -\wd\gezhu@tmpbox
@@ -349,7 +347,13 @@
     \the\aftergezhu
     \allowbreak
   }%
+  \let\gezhu@oldpar\par
+  %\def\par{\unpenalty\unskip\unpenalty\unskip\unpenalty\gezhu@oldpar
+  %  %\egroup
+  %  %\unvbox\gezhu@tmpbox\leavevmode\endgraf\setbox\gezhu@tmpbox=\vbox\bgroup
+  %  }%
   \gezhu@makespecials
+  \setbox\gezhu@tmpbox=\vbox\bgroup
 }
-\def\endwithgezhu{\egroup\unvbox\gezhu@tmpbox}
+\def\endwithgezhu{\egroup\showbox\gezhu@tmpbox\unvbox\gezhu@tmpbox\endgroup}
 \fi
