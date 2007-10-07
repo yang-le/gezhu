@@ -29,6 +29,9 @@
 %%                              Added \hfuzz and \hbadness to suppress warning.
 %%              07.9.30.        Want to change \par in withgezhu environment.
 %%                              New bug of unexcepted \parskip found.
+%%              07.10.7.        Determined that the above bug is introduced by
+%%                              CJKpunct. Removed \hyphenpenalty settings. Added
+%%                              \parskip setting to avoid the bug.
 %%      TODO:   1. Add a more friendly interface for use under LaTeX. e.g. 
 %%                 \begin{withgezhu}[raise=-2pt,lines=2,everygezhu={\tiny}]
 %%              2. Find bugs and fix...
@@ -72,7 +75,9 @@
 \beforegezhu={\nobreak\hskip\gezhu@cjkglue}
 \aftergezhu={\hskip\gezhu@cjkglue}
 \gezhu@strut={\vphantom{()}}
-\def\gezhu@break{\rlap{Break}\penalty\gezhu@breakpenalty}
+\def\gezhu@debug#1{}
+\def\gezhu@showbox#1{}
+\def\gezhu@break{\gezhu@debug{Break}\penalty\gezhu@breakpenalty}
 \def\gezhu@makehboxofhboxesandcount{%
   % input:  none but previous vertical mode nodes
   % output: \gezhu@tmpb@y as the result hbox, with interline skips
@@ -175,7 +180,7 @@
     \setbox\gezhu@tmpbox=\hbox{\unhbox\gezhu@tmpbox\unskip\unskip\unpenalty}%
     \unskip % remove interline skip in internal vertical mode
     \vskip -\parskip
-    \noindent\rlap{Copy}\copy\gezhu@tmpbox
+    \noindent\gezhu@debug{Copy}\copy\gezhu@tmpbox
     \the\beforegezhu
     \setbox\gezhu@tmpboy=\hbox{M}%
     \gezhu@bigem=\wd\gezhu@tmpboy
@@ -192,7 +197,7 @@
       \setbox\gezhu@tmpboy=\vbox{\hsize=\gezhu@tmpdim
         \leftskip=0pt\rightskip=0pt
         \pretolerance=9999\tolerance=9999\parindent=0pt\hfuzz=3em
-        \hyphenpenalty=9999\exhyphenpenalty=9999
+        \parskip=0pt
         \parshape\gezhu@parshape\relax
         ##1}%
       % extract the first \gezhu@lines lines and get the rest
@@ -222,7 +227,7 @@
       \setbox\gezhu@tmpboy=\vbox{%  the hsize is the main text hsize
         \leftskip=0pt\rightskip=0pt% plus 0.1em minus 0.1em%\gezhu@tmpdim
         \pretolerance=9999\tolerance=9999\parindent=0pt\hfuzz=3em
-        \hyphenpenalty=9999\exhyphenpenalty=9999
+        \parskip=0pt
         \parshape\gezhu@parshape
         \unvbox\gezhu@tmpb@y
         \gezhu@removehboxes
@@ -269,7 +274,7 @@
       \setbox\gezhu@tmpboy=\vbox{\hsize=\gezhu@tmpdim
         \leftskip=0pt\rightskip=0pt% plus 0.1em minus 0.1em%\gezhu@tmpdim
         \pretolerance=9999\tolerance=9999\parindent=0pt\hfuzz=3em
-        \hyphenpenalty=9999\exhyphenpenalty=9999
+        \parskip=0pt
         \parfillskip=0pt
         \unhcopy\gezhu@tmpbox
       }%
@@ -322,7 +327,7 @@
     \setbox\gezhu@tmpboy=\vbox{\hsize=\gezhu@tmpdim
       \leftskip=0pt\rightskip=0pt% plus 0.1em minus 0.1em%\gezhu@tmpdim
       \pretolerance=9999\tolerance=9999\parindent=0pt\hfuzz=3em
-      \hyphenpenalty=9999\exhyphenpenalty=9999
+      \parskip=0pt
       \parfillskip=0pt
       \unhcopy\gezhu@tmpbox
     }%
@@ -355,5 +360,5 @@
   \gezhu@makespecials
   \setbox\gezhu@tmpbox=\vbox\bgroup
 }
-\def\endwithgezhu{\egroup\showbox\gezhu@tmpbox\unvbox\gezhu@tmpbox\endgroup}
+\def\endwithgezhu{\egroup\gezhu@showbox\gezhu@tmpbox\unvbox\gezhu@tmpbox\endgroup}
 \fi
