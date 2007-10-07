@@ -32,9 +32,11 @@
 %%              07.10.7.        Determined that the above bug is introduced by
 %%                              CJKpunct. Removed \hyphenpenalty settings. Added
 %%                              \parskip setting to avoid the bug.
-%%      TODO:   1. Add a more friendly interface for use under LaTeX. e.g. 
+%%      TODO:   1. Ship every paragraph to the outter vertical list when \par
+%%                 is called, in order to save TeX's memory.
+%%              2. Add a more friendly interface for use under LaTeX. e.g. 
 %%                 \begin{withgezhu}[raise=-2pt,lines=2,everygezhu={\tiny}]
-%%              2. Find bugs and fix...
+%%              3. Find bugs and fix...
 %%      Note:   Chances are that the texts may exceed the right boundary 
 %%              because of punctuation prohibitions.
 \catcode`@=11
