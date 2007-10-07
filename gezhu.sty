@@ -26,19 +26,19 @@
 %%                              -\@M. Fixed bug that adding \gezhu@strut isn't
 %%                              enough for empty line compensation --- simply 
 %%                              by adding \baselineskip instead of \gezhu@strut
-%Changed \par in withgezhu environment.
-%%      TODO:   1. Reserve interline skip. Done.
-%%              2. Better width adjusting method. Seems better in this update.
-%%              3. Make the source more commented and readable. Done.
-%%              4. Add a more friendly interface for use under LaTeX. e.g. 
+%%                              Added \hfuzz and \hbadness to suppress warning.
+%%              07.9.30.        Want to change \par in withgezhu environment.
+%%                              New bug of unexcepted \parskip found.
+%%              07.10.7.        Determined that the above bug is introduced by
+%%                              CJKpunct. Removed \hyphenpenalty settings. Added
+%%                              \parskip setting to avoid the bug.
+%%      TODO:   1. Ship every paragraph to the outter vertical list when \par
+%%                 is called, in order to save TeX's memory.
+%%              2. Add a more friendly interface for use under LaTeX. e.g. 
 %%                 \begin{withgezhu}[raise=-2pt,lines=2,everygezhu={\tiny}]
-%%              5. Eliminate the annoying warnings of under/overfull boxes.
-%%              6. Find bugs and fix...
+%%              3. Find bugs and fix...
 %%      Note:   Chances are that the texts may exceed the right boundary 
-%%              because of punctuation prohibitions. I have no idea to solve 
-%%              this. In the next version I'll introduce an option ``hsplit''
-%%              with which specified the macro will use \hsplit to split the 
-%%              gezhu text, in which way this bug may be eliminated.
+%%              because of punctuation prohibitions.
 \catcode`@=11
 \ifx\gezhu@defined\@undefined
 \ifx\eTeXrevision\@undefined
@@ -77,7 +77,9 @@
 \beforegezhu={\nobreak\hskip\gezhu@cjkglue}
 \aftergezhu={\hskip\gezhu@cjkglue}
 \gezhu@strut={\vphantom{()}}
-\def\gezhu@break{\penalty\gezhu@breakpenalty}
+\def\gezhu@debug#1{}
+\def\gezhu@showbox#1{}
+\def\gezhu@break{\gezhu@debug{Break}\penalty\gezhu@breakpenalty}
 \def\gezhu@makehboxofhboxesandcount{%
   % input:  none but previous vertical mode nodes
   % output: \gezhu@tmpb@y as the result hbox, with interline skips
@@ -170,21 +172,23 @@
   \def|{\gezhu}%
 }
 }
-\def\withgezhu{\setbox\gezhu@tmpbox=\vbox\bgroup
+\def\withgezhu{\begingroup
   \showboxbreadth=999
   \showboxdepth=999
+  \hbadness=\@M\hfuzz=1em
   \def\gezhu##1{%
     \endgraf
     \setbox\gezhu@tmpbox=\lastbox
     \setbox\gezhu@tmpbox=\hbox{\unhbox\gezhu@tmpbox\unskip\unskip\unpenalty}%
     \unskip % remove interline skip in internal vertical mode
     \vskip -\parskip
-    \noindent\copy\gezhu@tmpbox
+    \noindent\gezhu@debug{Copy}\copy\gezhu@tmpbox
     \the\beforegezhu
     \setbox\gezhu@tmpboy=\hbox{M}%
     \gezhu@bigem=\wd\gezhu@tmpboy
     \begingroup
     \let\gezhu=\relax
+    \let\par\endgraf
     \the\everygezhu
     \gezhu@tmpdim=\hsize
     \advance\gezhu@tmpdim by -\wd\gezhu@tmpbox
@@ -195,7 +199,7 @@
       \setbox\gezhu@tmpboy=\vbox{\hsize=\gezhu@tmpdim
         \leftskip=0pt\rightskip=0pt
         \pretolerance=9999\tolerance=9999\parindent=0pt\hfuzz=3em
-        \hyphenpenalty=9999\exhyphenpenalty=9999
+        \parskip=0pt
         \parshape\gezhu@parshape\relax
         ##1}%
       % extract the first \gezhu@lines lines and get the rest
@@ -225,7 +229,7 @@
       \setbox\gezhu@tmpboy=\vbox{%  the hsize is the main text hsize
         \leftskip=0pt\rightskip=0pt% plus 0.1em minus 0.1em%\gezhu@tmpdim
         \pretolerance=9999\tolerance=9999\parindent=0pt\hfuzz=3em
-        \hyphenpenalty=9999\exhyphenpenalty=9999
+        \parskip=0pt
         \parshape\gezhu@parshape
         \unvbox\gezhu@tmpb@y
         \gezhu@removehboxes
@@ -272,7 +276,7 @@
       \setbox\gezhu@tmpboy=\vbox{\hsize=\gezhu@tmpdim
         \leftskip=0pt\rightskip=0pt% plus 0.1em minus 0.1em%\gezhu@tmpdim
         \pretolerance=9999\tolerance=9999\parindent=0pt\hfuzz=3em
-        \hyphenpenalty=9999\exhyphenpenalty=9999
+        \parskip=0pt
         \parfillskip=0pt
         \unhcopy\gezhu@tmpbox
       }%
@@ -325,7 +329,7 @@
     \setbox\gezhu@tmpboy=\vbox{\hsize=\gezhu@tmpdim
       \leftskip=0pt\rightskip=0pt% plus 0.1em minus 0.1em%\gezhu@tmpdim
       \pretolerance=9999\tolerance=9999\parindent=0pt\hfuzz=3em
-      \hyphenpenalty=9999\exhyphenpenalty=9999
+      \parskip=0pt
       \parfillskip=0pt
       \unhcopy\gezhu@tmpbox
     }%
@@ -350,7 +354,13 @@
     \the\aftergezhu
     \allowbreak
   }%
+  \let\gezhu@oldpar\par
+  %\def\par{\unpenalty\unskip\unpenalty\unskip\unpenalty\gezhu@oldpar
+  %  %\egroup
+  %  %\unvbox\gezhu@tmpbox\leavevmode\endgraf\setbox\gezhu@tmpbox=\vbox\bgroup
+  %  }%
   \gezhu@makespecials
+  \setbox\gezhu@tmpbox=\vbox\bgroup
 }
-\def\endwithgezhu{\egroup\unvbox\gezhu@tmpbox}
+\def\endwithgezhu{\egroup\gezhu@showbox\gezhu@tmpbox\unvbox\gezhu@tmpbox\endgroup}
 \fi
