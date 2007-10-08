@@ -32,6 +32,12 @@
 %%              07.10.7.        Determined that the above bug is introduced by
 %%                              CJKpunct. Removed \hyphenpenalty settings. Added
 %%                              \parskip setting to avoid the bug.
+%%              07.10.8.        Fixed bug of unwanted \penalty at end of para.
+%%                              Changed \copy to \unhcopy when copying box.
+%%                              Found a bug of punct-prohibitionless after 
+%%                              a gezhu box, which seems hard to fix.
+%%                              Added \gezhu@parfillskip setting. Better
+%%                              width adjusting for balancing using bigem.
 %%      TODO:   1. Ship every paragraph to the outter vertical list when \par
 %%                 is called, in order to save TeX's memory.
 %%              2. Add a more friendly interface for use under LaTeX. e.g. 
@@ -48,6 +54,7 @@
 \newcount\gezhu@lines
 \newcount\gezhu@breakpenalty
 \newskip\gezhu@cjkglue
+\newskip\gezhu@parfillskip
 \newdimen\gezhu@gezhuraise
 \newbox\gezhu@tmpbox
 \newbox\gezhu@tmpboy
@@ -61,6 +68,7 @@
 \newdimen\gezhu@tmpdil
 \newdimen\gezhu@tmpskip
 \newdimen\gezhu@bigem
+\newtoks\everywithgezhu
 \newtoks\everygezhu
 \newtoks\beforegezhu
 \newtoks\aftergezhu
@@ -68,14 +76,16 @@
 \gezhu@lines=2
 \gezhu@cjkglue=0pt plus 0.1em minus 0.1em
 \gezhu@gezhuraise=-2pt
+\gezhu@parfillskip=0pt
 \gezhu@breakpenalty=-\@M
+\everywithgezhu={\gezhu@makespecials}
 \ifdefined\LaTeX
   \everygezhu={\scriptsize}
 \else
   \everygezhu={\fiverm\baselineskip=6pt}
 \fi
-\beforegezhu={\nobreak\hskip\gezhu@cjkglue}
-\aftergezhu={\hskip\gezhu@cjkglue}
+\beforegezhu={\nobreak\hskip 0pt plus 0.1em minus 0.01em}
+\aftergezhu={\hskip 0pt plus 0.1em minus 0.01em}
 \gezhu@strut={\vphantom{()}}
 \def\gezhu@debug#1{}
 \def\gezhu@showbox#1{}
@@ -182,7 +192,7 @@
     \setbox\gezhu@tmpbox=\hbox{\unhbox\gezhu@tmpbox\unskip\unskip\unpenalty}%
     \unskip % remove interline skip in internal vertical mode
     \vskip -\parskip
-    \noindent\gezhu@debug{Copy}\copy\gezhu@tmpbox
+    \noindent\gezhu@debug{Copy}\unhcopy\gezhu@tmpbox
     \the\beforegezhu
     \setbox\gezhu@tmpboy=\hbox{M}%
     \gezhu@bigem=\wd\gezhu@tmpboy
@@ -277,7 +287,7 @@
         \leftskip=0pt\rightskip=0pt% plus 0.1em minus 0.1em%\gezhu@tmpdim
         \pretolerance=9999\tolerance=9999\parindent=0pt\hfuzz=3em
         \parskip=0pt
-        \parfillskip=0pt
+        \parfillskip=\gezhu@parfillskip
         \unhcopy\gezhu@tmpbox
       }%
       \setbox\gezhu@tmpboy=\vbox{%
@@ -288,7 +298,7 @@
         \global\setbox\gezhu@tmpb@y=\box\gezhu@tmpb@y
       }%
       \ifnum\gezhu@tmpcnt > \gezhu@lines
-        \advance\gezhu@tmpdim by 0.2em
+        \advance\gezhu@tmpdim by 0.1\gezhu@bigem
     \repeat
     % now \gezhu@tmpdim is the almost optimal hsize for vbox
     % now find the longest line width when break with hsize=\gezhu@tmpdim
@@ -314,8 +324,8 @@
     % now \gezhu@tmpdil is the length of the longest line
     % the following lines tries to find a better hsize
     \advance\gezhu@tmpdil by -\gezhu@tmpdim
-    \ifdim\gezhu@tmpdil > 0.5em
-      \advance\gezhu@tmpdim by 0.7\gezhu@tmpdil
+    \ifdim\gezhu@tmpdil > 0.45\gezhu@bigem
+      \advance\gezhu@tmpdim by \gezhu@tmpdil
       \ifdim\gezhu@tmpdim > \hsize
         \gezhu@tmpdim=\hsize
       \fi
@@ -330,7 +340,7 @@
       \leftskip=0pt\rightskip=0pt% plus 0.1em minus 0.1em%\gezhu@tmpdim
       \pretolerance=9999\tolerance=9999\parindent=0pt\hfuzz=3em
       \parskip=0pt
-      \parfillskip=0pt
+      \parfillskip=\gezhu@parfillskip
       \unhcopy\gezhu@tmpbox
     }%
     \setbox\gezhu@tmpboy=\vbox{%
@@ -350,16 +360,14 @@
     \repeat
     \raise\gezhu@gezhuraise\box\gezhu@tmpb@x
     \endgroup
-    \allowbreak
     \the\aftergezhu
-    \allowbreak
   }%
   \let\gezhu@oldpar\par
-  %\def\par{\unpenalty\unskip\unpenalty\unskip\unpenalty\gezhu@oldpar
-  %  %\egroup
-  %  %\unvbox\gezhu@tmpbox\leavevmode\endgraf\setbox\gezhu@tmpbox=\vbox\bgroup
-  %  }%
-  \gezhu@makespecials
+  \def\par{\unpenalty\unskip\unpenalty\unskip\unpenalty\gezhu@oldpar
+    %\egroup
+    %\unvbox\gezhu@tmpbox\leavevmode\endgraf\setbox\gezhu@tmpbox=\vbox\bgroup
+    }%
+  \the\everywithgezhu
   \setbox\gezhu@tmpbox=\vbox\bgroup
 }
 \def\endwithgezhu{\egroup\gezhu@showbox\gezhu@tmpbox\unvbox\gezhu@tmpbox\endgroup}
