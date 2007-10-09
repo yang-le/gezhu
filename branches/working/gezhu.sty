@@ -47,6 +47,7 @@
 %%                              is concerned. Okay for now.
 %%                              Found a bug of not enough space left for a big
 %%                              char to appear at the same line after gezhu.
+%%                              Fixed it by adding stretches to \aftergezhu.
 %%      TODO:   1. Ship every paragraph to the outter vertical list when \par
 %%                 is called, in order to save TeX's memory.
 %%              2. Add a more friendly interface for use under LaTeX. e.g. 
@@ -95,11 +96,11 @@
   \everygezhu={\fiverm\baselineskip=6pt}
 \fi
 \beforegezhu={\nobreak\hskip 0pt plus 0.1em minus 0.01em}
-\aftergezhu={\hskip 0pt plus 0.1em minus 0.01em}
+\aftergezhu={\nobreak\hskip 0pt plus 0.6em\penalty 500\hskip 0pt plus -0.6em\hskip 0pt plus 0.1em minus 0.01em}
 \gezhu@strut={\vphantom{()}}
 \def\gezhu@debug#1{}
 \def\gezhu@showbox#1{}
-\def\gezhu@debugbox#1{\gezhu@fbox{#1}}
+\def\gezhu@debugbox#1{#1}
 \def\gezhu@break{\gezhu@debug{Break}\penalty\gezhu@breakpenalty}
 \def\gezhu@makehboxofhboxesandcount{%
   % input:  none but previous vertical mode nodes
@@ -398,10 +399,11 @@
   \setbox\gezhu@fbox@tmpbox=\hbox{#1}%
   \gezhu@fbox@tmpdim=2\gezhu@fbox@linewidth
   \advance\gezhu@fbox@tmpdim\wd\gezhu@fbox@tmpbox
-  \leavevmode\hbox{\hskip-\gezhu@fbox@linewidth\vbox{\hrule height \gezhu@fbox@linewidth width \gezhu@fbox@tmpdim
+  \leavevmode\hbox{\hskip-\gezhu@fbox@linewidth\vbox{\vskip
+  -\gezhu@fbox@linewidth\hrule height \gezhu@fbox@linewidth width \gezhu@fbox@tmpdim
   \hbox{\vrule width \gezhu@fbox@linewidth height \ht\gezhu@fbox@tmpbox
   \unhcopy\gezhu@fbox@tmpbox\vrule width \gezhu@fbox@linewidth height \ht\gezhu@fbox@tmpbox}%
   \hrule height \gezhu@fbox@linewidth width \gezhu@fbox@tmpdim
-  }\hskip-\gezhu@fbox@linewidth}%
+  \vskip -\gezhu@fbox@linewidth}\hskip-\gezhu@fbox@linewidth}%
 }
 \fi
