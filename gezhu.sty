@@ -38,6 +38,16 @@
 %%                              a gezhu box, which seems hard to fix.
 %%                              Added \gezhu@parfillskip setting. Better
 %%                              width adjusting for balancing using bigem.
+%%              07.10.9.        Added fbox for debug. Found a bug of two chars
+%%                              appear at the end of line when the rest space
+%%                              is between the width of 1 char and 2 chars,
+%%                              which looks ugly. Fixed it by comparing the 
+%%                              rest space with 2\gezhu@smallem and adjustment.
+%%                              But not very ideal when punct-prohibition
+%%                              is concerned. Okay for now.
+%%                              Found a bug of not enough space left for a big
+%%                              char to appear at the same line after gezhu.
+%%                              Fixed it by adding stretches to \aftergezhu.
 %%      TODO:   1. Ship every paragraph to the outter vertical list when \par
 %%                 is called, in order to save TeX's memory.
 %%              2. Add a more friendly interface for use under LaTeX. e.g. 
@@ -68,6 +78,7 @@
 \newdimen\gezhu@tmpdil
 \newdimen\gezhu@tmpskip
 \newdimen\gezhu@bigem
+\newdimen\gezhu@smallem
 \newtoks\everywithgezhu
 \newtoks\everygezhu
 \newtoks\beforegezhu
@@ -85,10 +96,11 @@
   \everygezhu={\fiverm\baselineskip=6pt}
 \fi
 \beforegezhu={\nobreak\hskip 0pt plus 0.1em minus 0.01em}
-\aftergezhu={\hskip 0pt plus 0.1em minus 0.01em}
+\aftergezhu={\nobreak\hskip 0pt plus 0.6em\penalty 500\hskip 0pt plus -0.6em\hskip 0pt plus 0.1em minus 0.01em}
 \gezhu@strut={\vphantom{()}}
 \def\gezhu@debug#1{}
 \def\gezhu@showbox#1{}
+\def\gezhu@debugbox#1{#1}
 \def\gezhu@break{\gezhu@debug{Break}\penalty\gezhu@breakpenalty}
 \def\gezhu@makehboxofhboxesandcount{%
   % input:  none but previous vertical mode nodes
@@ -200,10 +212,17 @@
     \let\gezhu=\relax
     \let\par\endgraf
     \the\everygezhu
+    \setbox\gezhu@tmpboy=\hbox{M}%
+    \gezhu@smallem=\wd\gezhu@tmpboy
     \gezhu@tmpdim=\hsize
     \advance\gezhu@tmpdim by -\wd\gezhu@tmpbox
     % now \gezhu@tmpdim is the width of the rest blank space of the line
-    \ifdim\gezhu@tmpdim > 0.7em % annotations at the end of line
+    \ifdim\gezhu@tmpdim > 0.9\gezhu@smallem % annotations at the end of line
+      \ifdim\gezhu@tmpdim > \gezhu@smallem
+        \ifdim\gezhu@tmpdim < 2\gezhu@smallem
+          \gezhu@tmpdim = 2\gezhu@smallem
+        \fi
+      \fi
       \gezhu@makeparshape{\gezhu@tmpdim}%
       % place gezhu annotation text in a vbox with specified parshape
       \setbox\gezhu@tmpboy=\vbox{\hsize=\gezhu@tmpdim
@@ -224,7 +243,7 @@
         \global\setbox\gezhu@tmpb@y=\box\gezhu@tmpb@y
       }%
       \ifdim\wd\gezhu@tmpb@x > 0pt
-        \raise\gezhu@gezhuraise\box\gezhu@tmpb@x
+        \raise\gezhu@gezhuraise\hbox{\gezhu@debugbox{\box\gezhu@tmpb@x}}%
         \gezhu@break
       \fi
     \else % no annotations at the end of line
@@ -259,7 +278,7 @@
       }%
       \ifdim\wd\gezhu@tmpb@x > 0pt% enough for construct a whole big line
         \setbox\gezhu@tmpbox=\hbox{\box\gezhu@tmpb@x}%
-        \raise\gezhu@gezhuraise\box\gezhu@tmpbox
+	\raise\gezhu@gezhuraise\hbox{\gezhu@debugbox{\box\gezhu@tmpbox}}%
         \gezhu@break
     \repeat
     % enter balancing module
@@ -326,9 +345,9 @@
     \advance\gezhu@tmpdil by -\gezhu@tmpdim
     \ifdim\gezhu@tmpdil > 0.45\gezhu@bigem
       \advance\gezhu@tmpdim by \gezhu@tmpdil
-      \ifdim\gezhu@tmpdim > \hsize
-        \gezhu@tmpdim=\hsize
-      \fi
+    \fi
+    \ifdim\gezhu@tmpdim > \hsize
+      \gezhu@tmpdim=\hsize
     \fi
     %\gezhu@tmpdil=\hsize
     %\advance\gezhu@tmpdil by -\gezhu@tmpdim
@@ -358,7 +377,7 @@
         %\setbox\gezhu@tmpb@y=\hbox{\unhbox\gezhu@tmpb@y\hbox{\the\gezhu@strut}}%
         \setbox\gezhu@tmpb@x=\vbox{\unvbox\gezhu@tmpb@x\vskip\baselineskip}%
     \repeat
-    \raise\gezhu@gezhuraise\box\gezhu@tmpb@x
+    \raise\gezhu@gezhuraise\hbox{\gezhu@debugbox{\box\gezhu@tmpb@x}}%
     \endgroup
     \the\aftergezhu
   }%
@@ -371,4 +390,20 @@
   \setbox\gezhu@tmpbox=\vbox\bgroup
 }
 \def\endwithgezhu{\egroup\gezhu@showbox\gezhu@tmpbox\unvbox\gezhu@tmpbox\endgroup}
+% fbox
+\newbox\gezhu@fbox@tmpbox
+\newdimen\gezhu@fbox@linewidth
+\newdimen\gezhu@fbox@tmpdim
+\gezhu@fbox@linewidth=0.4pt
+\long\def\gezhu@fbox#1{%
+  \setbox\gezhu@fbox@tmpbox=\hbox{#1}%
+  \gezhu@fbox@tmpdim=2\gezhu@fbox@linewidth
+  \advance\gezhu@fbox@tmpdim\wd\gezhu@fbox@tmpbox
+  \leavevmode\hbox{\hskip-\gezhu@fbox@linewidth\vbox{\vskip
+  -\gezhu@fbox@linewidth\hrule height \gezhu@fbox@linewidth width \gezhu@fbox@tmpdim
+  \hbox{\vrule width \gezhu@fbox@linewidth height \ht\gezhu@fbox@tmpbox
+  \unhcopy\gezhu@fbox@tmpbox\vrule width \gezhu@fbox@linewidth height \ht\gezhu@fbox@tmpbox}%
+  \hrule height \gezhu@fbox@linewidth width \gezhu@fbox@tmpdim
+  \vskip -\gezhu@fbox@linewidth}\hskip-\gezhu@fbox@linewidth}%
+}
 \fi
