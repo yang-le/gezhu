@@ -48,6 +48,10 @@
 %%                              Found a bug of not enough space left for a big
 %%                              char to appear at the same line after gezhu.
 %%                              Fixed it by adding stretches to \aftergezhu.
+%%              07.10.13.       Changed \newdimen\gezhu@tmpskip to \newskip.
+%%                              Added \gezhu@leftspace to fix a bug of balanced
+%%                              gezhu stretching out of the right margin.
+%%                              Fixed the bug of 1em 2 chars.
 %%      TODO:   1. Ship every paragraph to the outter vertical list when \par
 %%                 is called, in order to save TeX's memory.
 %%              2. Add a more friendly interface for use under LaTeX. e.g. 
@@ -76,7 +80,8 @@
 \newcount\gezhu@tmpcnt
 \newdimen\gezhu@tmpdim
 \newdimen\gezhu@tmpdil
-\newdimen\gezhu@tmpskip
+\newskip\gezhu@tmpskip
+\newdimen\gezhu@leftspace
 \newdimen\gezhu@bigem
 \newdimen\gezhu@smallem
 \newtoks\everywithgezhu
@@ -214,18 +219,19 @@
     \the\everygezhu
     \setbox\gezhu@tmpboy=\hbox{M}%
     \gezhu@smallem=\wd\gezhu@tmpboy
-    \gezhu@tmpdim=\hsize
-    \advance\gezhu@tmpdim by -\wd\gezhu@tmpbox
-    % now \gezhu@tmpdim is the width of the rest blank space of the line
-    \ifdim\gezhu@tmpdim > 0.9\gezhu@smallem % annotations at the end of line
-      \ifdim\gezhu@tmpdim > \gezhu@smallem
-        \ifdim\gezhu@tmpdim < 2\gezhu@smallem
-          \gezhu@tmpdim = 2\gezhu@smallem
+    \gezhu@leftspace=\dimexpr\hsize - \wd\gezhu@tmpbox\relax
+    % now \gezhu@leftspace is the width of the rest blank space of the line
+    \ifdim\gezhu@leftspace > 0.9\gezhu@smallem % annotations at the end of line
+      \ifdim\gezhu@leftspace > 1.3\gezhu@smallem
+        \ifdim\gezhu@leftspace < 2\gezhu@smallem
+          \gezhu@leftspace = 2\gezhu@smallem
         \fi
+      \else
+        \gezhu@leftspace = 0.95\gezhu@smallem
       \fi
-      \gezhu@makeparshape{\gezhu@tmpdim}%
+      \gezhu@makeparshape{\gezhu@leftspace}%
       % place gezhu annotation text in a vbox with specified parshape
-      \setbox\gezhu@tmpboy=\vbox{\hsize=\gezhu@tmpdim
+      \setbox\gezhu@tmpboy=\vbox{\hsize=\gezhu@leftspace
         \leftskip=0pt\rightskip=0pt
         \pretolerance=9999\tolerance=9999\parindent=0pt\hfuzz=3em
         \parskip=0pt
@@ -245,11 +251,13 @@
       \ifdim\wd\gezhu@tmpb@x > 0pt
         \raise\gezhu@gezhuraise\hbox{\gezhu@debugbox{\box\gezhu@tmpb@x}}%
         \gezhu@break
+        \gezhu@leftspace=\hsize
       \fi
     \else % no annotations at the end of line
       \setbox\gezhu@tmpb@y=\vbox{\hsize=\maxdimen\hbox{##1}}%
       %\hskip 0pt plus 0.7em
       \gezhu@break
+      \gezhu@leftspace=\hsize
     \fi
     % now \gezhu@tmpb@y holds the remaining annotation text
     \loop
@@ -280,6 +288,7 @@
         \setbox\gezhu@tmpbox=\hbox{\box\gezhu@tmpb@x}%
 	\raise\gezhu@gezhuraise\hbox{\gezhu@debugbox{\box\gezhu@tmpbox}}%
         \gezhu@break
+        \gezhu@leftspace=\hsize
     \repeat
     % enter balancing module
     % \gezhu@tmpcnt is the number of lines in \gezhu@tmpb@y
@@ -346,14 +355,10 @@
     \ifdim\gezhu@tmpdil > 0.45\gezhu@bigem
       \advance\gezhu@tmpdim by \gezhu@tmpdil
     \fi
-    \ifdim\gezhu@tmpdim > \hsize
-      \gezhu@tmpdim=\hsize
+    \ifdim\gezhu@tmpdim > \gezhu@leftspace
+      \gezhu@tmpdim=\gezhu@leftspace
     \fi
-    %\gezhu@tmpdil=\hsize
-    %\advance\gezhu@tmpdil by -\gezhu@tmpdim
-    %\ifdim\gezhu@tmpdil < \gezhu@bigem
-    %  \gezhu@tmpdim=\hsize
-    %\fi
+    % now \gezhu@tmpdim is the should-be length of the gezhu box
     %%%%
     \setbox\gezhu@tmpboy=\vbox{\hsize=\gezhu@tmpdim
       \leftskip=0pt\rightskip=0pt% plus 0.1em minus 0.1em%\gezhu@tmpdim
