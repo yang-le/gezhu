@@ -52,6 +52,11 @@
 %%                              Added \gezhu@leftspace to fix a bug of balanced
 %%                              gezhu stretching out of the right margin.
 %%                              Fixed the bug of 1em 2 chars.
+%%                              Fixed the bug of wrong bigem and smallem 
+%%                              setting --- \wd\hbox{M} doesn't generate 1em.
+%%                              Added gezhu normalize functionality.
+%%                              Fixed the bug that the length of a widow hanzi
+%%                              box is less than \gezhu@smallem.
 %%      TODO:   1. Ship every paragraph to the outter vertical list when \par
 %%                 is called, in order to save TeX's memory.
 %%              2. Add a more friendly interface for use under LaTeX. e.g. 
@@ -65,11 +70,18 @@
   \errmessge{eTeX required to use this package}
 \fi
 \def\gezhu@defined{\relax}
+% user configurable
 \newcount\gezhu@lines
 \newcount\gezhu@breakpenalty
 \newskip\gezhu@cjkglue
 \newskip\gezhu@parfillskip
 \newdimen\gezhu@gezhuraise
+\newtoks\everywithgezhu
+\newtoks\everygezhu
+\newtoks\beforegezhu
+\newtoks\aftergezhu
+\newif\ifgezhunormalize
+% for self use
 \newbox\gezhu@tmpbox
 \newbox\gezhu@tmpboy
 \newbox\gezhu@tmpboz
@@ -78,22 +90,21 @@
 \newbox\gezhu@tmpb@z
 \newbox\gezhu@tmpb@w
 \newcount\gezhu@tmpcnt
+\newcount\gezhu@tmpcns
 \newdimen\gezhu@tmpdim
 \newdimen\gezhu@tmpdil
 \newskip\gezhu@tmpskip
 \newdimen\gezhu@leftspace
 \newdimen\gezhu@bigem
 \newdimen\gezhu@smallem
-\newtoks\everywithgezhu
-\newtoks\everygezhu
-\newtoks\beforegezhu
-\newtoks\aftergezhu
 \newtoks\gezhu@strut
+%
 \gezhu@lines=2
 \gezhu@cjkglue=0pt plus 0.1em minus 0.1em
 \gezhu@gezhuraise=-2pt
 \gezhu@parfillskip=0pt
 \gezhu@breakpenalty=-\@M
+\gezhunormalizefalse
 \everywithgezhu={\gezhu@makespecials}
 \ifdefined\LaTeX
   \everygezhu={\scriptsize}
@@ -111,7 +122,7 @@
   % input:  none but previous vertical mode nodes
   % output: \gezhu@tmpb@y as the result hbox, with interline skips
   %         \gezhu@tmpcnt as the result count
-  % uses:   \gezhu@tmpb@z, \gezhu@tmpskip
+  % uses:   \gezhu@tmpb@z, \gezhu@tmpskip, \loop
   \setbox\gezhu@tmpb@y=\hbox{}%
   \gezhu@tmpcnt=0
   \loop
@@ -132,7 +143,7 @@
   %         \gezhu@tmpb@y as the hboxofhbox
   % output: \gezhu@tmpb@x as vbox of the first hboxes
   %         \gezhu@tmpb@y as vbox of the rest boxes without interlineskips
-  % uses:   \gezhu@tmpb@x, \gezhu@tmpb@y, \gezhu@tmpcnt, \gezhu@tmpskip
+  % uses:   \gezhu@tmpb@x, \gezhu@tmpb@y, \gezhu@tmpcnt, \gezhu@tmpskip, \loop
   \hskip 111sp% manual boundary
   \unhbox\gezhu@tmpb@y
   \setbox\gezhu@tmpb@x=\copy\voidb@x% first boxes
@@ -180,7 +191,8 @@
   \fi
 }
 \def\gezhu@makeparshape#1{%
-  % set parshape. First \gezhu@lines lines have length #1
+  % input:  #1 as the length of the first \gezhu@lines lines
+  % output: \gezhu@parshape as the generated parshape
   \begingroup % for local loop
   \xdef\gezhu@parshape{\number\numexpr\gezhu@lines+1}%
   \gezhu@tmpcnt=1
@@ -191,6 +203,42 @@
   \repeat
   \xdef\gezhu@parshape{\gezhu@parshape\space 0pt \the\maxdimen}%
   \endgroup
+}
+\def\gezhu@normalize{%
+  % input:  \gezhu@tmpdim as the length of the gezhu box
+  % output: \gezhu@tmpdil as the adjustment length, which equals to
+  %             \gezhu@bigem * ceil(#1 / \gezhu@bigem) - #1
+  % uses:   \gezhu@tmpcnt, \gezhu@tmpcns, \loop
+  % first binary search to find ceil(#1 / \gezhu@bigem)
+  \gezhu@tmpcnt=1
+  \loop
+    \ifdim\dimexpr\gezhu@bigem*\gezhu@tmpcnt < \gezhu@tmpdim
+      \multiply\gezhu@tmpcnt by 2
+  \repeat
+  \divide\gezhu@tmpcnt by 2\relax
+  % now \gezhu@bigem*\gezhu@tmpcnt*2 >= \gezhu@tmpdim
+  \gezhu@tmpcns=\gezhu@tmpcnt
+  \loop
+    \ifdim\dimexpr\gezhu@bigem*\numexpr(\gezhu@tmpcnt+\gezhu@tmpcns) 
+        > \gezhu@tmpdim
+      \divide\gezhu@tmpcns by 2
+  \repeat
+  % now \gezhu@bigem*(\gezhu@tmpcnt+\gezhu@tmpcns) <= \gezhu@tmpdim
+  \advance\gezhu@tmpcnt by \gezhu@tmpcns
+  \loop
+    \ifdim\dimexpr\gezhu@bigem*\gezhu@tmpcnt
+        < \gezhu@tmpdim
+      \advance\gezhu@tmpcnt by 1
+  \repeat
+  % now \gezhu@bigem*\gezhu@tmpcnt >= \gezhu@tmpdim
+  % \gezhu@bigem*(\gezhu@tmpcnt-1) < \gezhu@tmpdim
+  \gezhu@tmpdil=\dimexpr\gezhu@bigem*\gezhu@tmpcnt-\gezhu@tmpdim\relax
+  \ifdim\gezhu@tmpdil < 0pt
+    \errmessge{Ooops, the algorithm is wrong!}%
+  \fi
+  \ifdim\gezhu@tmpdil < 0.05\gezhu@bigem
+    \gezhu@tmpdil=0pt
+  \fi
 }
 {
 \catcode`|=\active
@@ -211,13 +259,14 @@
     \vskip -\parskip
     \noindent\gezhu@debug{Copy}\unhcopy\gezhu@tmpbox
     \the\beforegezhu
-    \setbox\gezhu@tmpboy=\hbox{M}%
+    \def\gezhu@tmpmacro{\setbox\gezhu@tmpboy=\hbox{\hskip 1em}}\gezhu@tmpmacro
     \gezhu@bigem=\wd\gezhu@tmpboy
     \begingroup
     \let\gezhu=\relax
     \let\par\endgraf
     \the\everygezhu
-    \setbox\gezhu@tmpboy=\hbox{M}%
+    \def\gezhu@tmpmacro{\setbox\gezhu@tmpboy=\hbox{\hskip 1em}}\gezhu@tmpmacro
+    %\setbox\gezhu@tmpboy=\hbox{M}%
     \gezhu@smallem=\wd\gezhu@tmpboy
     \gezhu@leftspace=\dimexpr\hsize - \wd\gezhu@tmpbox\relax
     % now \gezhu@leftspace is the width of the rest blank space of the line
@@ -286,7 +335,7 @@
       }%
       \ifdim\wd\gezhu@tmpb@x > 0pt% enough for construct a whole big line
         \setbox\gezhu@tmpbox=\hbox{\box\gezhu@tmpb@x}%
-	\raise\gezhu@gezhuraise\hbox{\gezhu@debugbox{\box\gezhu@tmpbox}}%
+        \raise\gezhu@gezhuraise\hbox{\gezhu@debugbox{\box\gezhu@tmpbox}}%
         \gezhu@break
         \gezhu@leftspace=\hsize
     \repeat
@@ -352,7 +401,7 @@
     % now \gezhu@tmpdil is the length of the longest line
     % the following lines tries to find a better hsize
     \advance\gezhu@tmpdil by -\gezhu@tmpdim
-    \ifdim\gezhu@tmpdil > 0.45\gezhu@bigem
+    \ifdim\gezhu@tmpdil > 0.45\gezhu@smallem
       \advance\gezhu@tmpdim by \gezhu@tmpdil
     \fi
     \ifdim\gezhu@tmpdim > \gezhu@leftspace
@@ -383,6 +432,14 @@
         \setbox\gezhu@tmpb@x=\vbox{\unvbox\gezhu@tmpb@x\vskip\baselineskip}%
     \repeat
     \raise\gezhu@gezhuraise\hbox{\gezhu@debugbox{\box\gezhu@tmpb@x}}%
+    \ifgezhunormalize
+      \gezhu@debug{\raise-3pt\hbox{\the\gezhu@tmpdim}}%
+      \gezhu@normalize % output in \gezhu@tmpdil
+      \ifdim\gezhu@tmpdil > 0pt
+        \kern\gezhu@tmpdil
+        \gezhu@debug{\raise 8pt\hbox{\the\gezhu@tmpdil, \the\gezhu@bigem}}%
+      \fi
+    \fi
     \endgroup
     \the\aftergezhu
   }%
