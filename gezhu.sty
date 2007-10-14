@@ -57,6 +57,7 @@
 %%                              Added gezhu normalize functionality.
 %%                              Fixed the bug that the length of a widow hanzi
 %%                              box is less than \gezhu@smallem.
+%%                              \gezhurevision added.
 %%      TODO:   1. Ship every paragraph to the outter vertical list when \par
 %%                 is called, in order to save TeX's memory.
 %%              2. Add a more friendly interface for use under LaTeX. e.g. 
@@ -65,11 +66,11 @@
 %%      Note:   Chances are that the texts may exceed the right boundary 
 %%              because of punctuation prohibitions.
 \catcode`@=11
-\ifx\gezhu@defined\@undefined
+\ifx\gezhurevision\@undefined
 \ifx\eTeXrevision\@undefined
   \errmessge{eTeX required to use this package}
 \fi
-\def\gezhu@defined{\relax}
+\def\gezhurevision{2007.10.13.}
 % user configurable
 \newcount\gezhu@lines
 \newcount\gezhu@breakpenalty
