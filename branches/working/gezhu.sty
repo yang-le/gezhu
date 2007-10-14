@@ -57,6 +57,10 @@
 %%                              Added gezhu normalize functionality.
 %%                              Fixed the bug that the length of a widow hanzi
 %%                              box is less than \gezhu@smallem.
+%%                              \gezhurevision added.
+%%              07.10.14.       Fixed the bug of breaking after gezhu when 
+%%                              the rest space is about 1em.
+%%                              Added simple interface to set raise and parfil.
 %%      TODO:   1. Ship every paragraph to the outter vertical list when \par
 %%                 is called, in order to save TeX's memory.
 %%              2. Add a more friendly interface for use under LaTeX. e.g. 
@@ -65,11 +69,11 @@
 %%      Note:   Chances are that the texts may exceed the right boundary 
 %%              because of punctuation prohibitions.
 \catcode`@=11
-\ifx\gezhu@defined\@undefined
+\ifx\gezhurevision\@undefined
 \ifx\eTeXrevision\@undefined
   \errmessge{eTeX required to use this package}
 \fi
-\def\gezhu@defined{\relax}
+\def\gezhurevision{2007.10.14.}
 % user configurable
 \newcount\gezhu@lines
 \newcount\gezhu@breakpenalty
@@ -112,7 +116,8 @@
   \everygezhu={\fiverm\baselineskip=6pt}
 \fi
 \beforegezhu={\nobreak\hskip 0pt plus 0.1em minus 0.01em}
-\aftergezhu={\nobreak\hskip 0pt plus 0.6em\penalty 500\hskip 0pt plus -0.6em\hskip 0pt plus 0.1em minus 0.01em}
+\aftergezhu={\nobreak\hskip 0pt plus 0.4em\penalty 2000\hskip 0pt plus -0.4em
+  \hskip 0pt plus 0.1em minus 0.01em}
 \gezhu@strut={\vphantom{()}}
 \def\gezhu@debug#1{}
 \def\gezhu@showbox#1{}
@@ -250,7 +255,7 @@
 \def\withgezhu{\begingroup
   \showboxbreadth=999
   \showboxdepth=999
-  \hbadness=\@M\hfuzz=1em
+  \hbadness=\@M\hfuzz=0.4em
   \def\gezhu##1{%
     \endgraf
     \setbox\gezhu@tmpbox=\lastbox
@@ -452,6 +457,10 @@
   \setbox\gezhu@tmpbox=\vbox\bgroup
 }
 \def\endwithgezhu{\egroup\gezhu@showbox\gezhu@tmpbox\unvbox\gezhu@tmpbox\endgroup}
+\def\setgezhulines#1{\gezhu@lines=#1\relax}
+\def\setgezhuraise#1{\gezhu@gezhuraise=#1\relax}
+\def\gezhuraggedtrue{\gezhu@parfillskip=0pt plus 1fil\relax}
+\def\gezhuraggedfalse{\gezhu@parfillskip=0pt\relax}
 % fbox
 \newbox\gezhu@fbox@tmpbox
 \newdimen\gezhu@fbox@linewidth
