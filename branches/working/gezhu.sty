@@ -61,6 +61,7 @@
 %%              07.10.14.       Fixed the bug of breaking after gezhu when 
 %%                              the rest space is about 1em.
 %%                              Added simple interface to set raise and parfil.
+%%                              Finally fixed the bug of CJK char wrap.
 %%      TODO:   1. Ship every paragraph to the outter vertical list when \par
 %%                 is called, in order to save TeX's memory.
 %%              2. Add a more friendly interface for use under LaTeX. e.g. 
@@ -265,6 +266,9 @@
     \noindent\gezhu@debug{Copy}\unhcopy\gezhu@tmpbox
     \the\beforegezhu
     \def\gezhu@tmpmacro{\setbox\gezhu@tmpboy=\hbox{\hskip 1em}}\gezhu@tmpmacro
+    \ifdefined\CJK@spaceChar % now in CJK, fix me
+      \setbox\gezhu@tmpboy=\hbox{\CJK@spaceChar}%
+    \fi
     \gezhu@bigem=\wd\gezhu@tmpboy
     \begingroup
     \let\gezhu=\relax
@@ -272,6 +276,9 @@
     \the\everygezhu
     \def\gezhu@tmpmacro{\setbox\gezhu@tmpboy=\hbox{\hskip 1em}}\gezhu@tmpmacro
     %\setbox\gezhu@tmpboy=\hbox{M}%
+    \ifdefined\CJK@spaceChar % now in CJK, fix me
+      \setbox\gezhu@tmpboy=\hbox{\CJK@spaceChar}%
+    \fi
     \gezhu@smallem=\wd\gezhu@tmpboy
     \gezhu@leftspace=\dimexpr\hsize - \wd\gezhu@tmpbox\relax
     % now \gezhu@leftspace is the width of the rest blank space of the line
@@ -281,7 +288,7 @@
           \gezhu@leftspace = 2\gezhu@smallem
         \fi
       \else
-        \gezhu@leftspace = 0.95\gezhu@smallem
+        \gezhu@leftspace = 0.99\gezhu@smallem
       \fi
       \gezhu@makeparshape{\gezhu@leftspace}%
       % place gezhu annotation text in a vbox with specified parshape
