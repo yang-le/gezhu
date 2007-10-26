@@ -62,6 +62,9 @@
 %%                              the rest space is about 1em.
 %%                              Added simple interface to set raise and parfil.
 %%                              Finally fixed the bug of CJK char wrap.
+%%              07.10.26.       Fixed the bug of wrong baselineskip cause by
+%%                              the raising of gezhu box. Fixed the bug of 
+%%                              wrong baselineskip before and after withgezhu.
 %%      TODO:   1. Ship every paragraph to the outter vertical list when \par
 %%                 is called, in order to save TeX's memory.
 %%              2. Add a more friendly interface for use under LaTeX. e.g. 
@@ -310,7 +313,8 @@
         \global\setbox\gezhu@tmpb@y=\box\gezhu@tmpb@y
       }%
       \ifdim\wd\gezhu@tmpb@x > 0pt
-        \raise\gezhu@gezhuraise\hbox{\gezhu@debugbox{\box\gezhu@tmpb@x}}%
+        \setbox0=\hbox{\raise\gezhu@gezhuraise\hbox{\gezhu@debugbox{\box\gezhu@tmpb@x}}}%
+	\ht0=0pt\dp0=0pt\box0
         \gezhu@break
         \gezhu@leftspace=\hsize
       \fi
@@ -347,7 +351,8 @@
       }%
       \ifdim\wd\gezhu@tmpb@x > 0pt% enough for construct a whole big line
         \setbox\gezhu@tmpbox=\hbox{\box\gezhu@tmpb@x}%
-        \raise\gezhu@gezhuraise\hbox{\gezhu@debugbox{\box\gezhu@tmpbox}}%
+        \setbox0=\hbox{\raise\gezhu@gezhuraise\hbox{\gezhu@debugbox{\box\gezhu@tmpbox}}}%
+	\ht0=0pt\dp0=0pt\box0
         \gezhu@break
         \gezhu@leftspace=\hsize
     \repeat
@@ -443,7 +448,8 @@
         %\setbox\gezhu@tmpb@y=\hbox{\unhbox\gezhu@tmpb@y\hbox{\the\gezhu@strut}}%
         \setbox\gezhu@tmpb@x=\vbox{\unvbox\gezhu@tmpb@x\vskip\baselineskip}%
     \repeat
-    \raise\gezhu@gezhuraise\hbox{\gezhu@debugbox{\box\gezhu@tmpb@x}}%
+    \setbox0=\hbox{\raise\gezhu@gezhuraise\hbox{\gezhu@debugbox{\box\gezhu@tmpb@x}}}%
+    \ht0=0pt\dp0=0pt\box0
     \ifgezhunormalize
       \gezhu@debug{\raise-3pt\hbox{\the\gezhu@tmpdim}}%
       \gezhu@normalize % output in \gezhu@tmpdil
@@ -460,10 +466,16 @@
     %\egroup
     %\unvbox\gezhu@tmpbox\leavevmode\endgraf\setbox\gezhu@tmpbox=\vbox\bgroup
     }%
+  \endgraf
   \the\everywithgezhu
+  \gezhu@tmpdim=\prevdepth
   \setbox\gezhu@tmpbox=\vbox\bgroup
+  \let\withgezhu\relax
+  \prevdepth=\gezhu@tmpdim
 }
-\def\endwithgezhu{\egroup\gezhu@showbox\gezhu@tmpbox\unvbox\gezhu@tmpbox\endgroup}
+\def\endwithgezhu{\par\global\gezhu@tmpdim=\prevdepth\egroup\prevdepth=\gezhu@tmpdim
+  \gezhu@showbox\gezhu@tmpbox\unvbox\gezhu@tmpbox\endgroup
+}
 \def\setgezhulines#1{\gezhu@lines=#1\relax}
 \def\setgezhuraise#1{\gezhu@gezhuraise=#1\relax}
 \def\gezhuraggedtrue{\gezhu@parfillskip=0pt plus 1fil\relax}
@@ -472,16 +484,24 @@
 \newbox\gezhu@fbox@tmpbox
 \newdimen\gezhu@fbox@linewidth
 \newdimen\gezhu@fbox@tmpdim
+\newdimen\gezhu@fbox@tmpdil
 \gezhu@fbox@linewidth=0.4pt
 \long\def\gezhu@fbox#1{%
   \setbox\gezhu@fbox@tmpbox=\hbox{#1}%
   \gezhu@fbox@tmpdim=2\gezhu@fbox@linewidth
+  \gezhu@fbox@tmpdil=\dp\gezhu@fbox@tmpbox
   \advance\gezhu@fbox@tmpdim\wd\gezhu@fbox@tmpbox
-  \leavevmode\hbox{\hskip-\gezhu@fbox@linewidth\vbox{\vskip
+  \setbox\gezhu@fbox@tmpbox=\hbox{\hskip-\gezhu@fbox@linewidth\vbox{\vskip
   -\gezhu@fbox@linewidth\hrule height \gezhu@fbox@linewidth width \gezhu@fbox@tmpdim
   \hbox{\vrule width \gezhu@fbox@linewidth height \ht\gezhu@fbox@tmpbox
   \unhcopy\gezhu@fbox@tmpbox\vrule width \gezhu@fbox@linewidth height \ht\gezhu@fbox@tmpbox}%
   \hrule height \gezhu@fbox@linewidth width \gezhu@fbox@tmpdim
   \vskip -\gezhu@fbox@linewidth}\hskip-\gezhu@fbox@linewidth}%
+  \leavevmode\raise-\gezhu@fbox@tmpdil\box\gezhu@fbox@tmpbox
+}
+\long\def\gezhu@baselinebox#1{%
+  \setbox\gezhu@fbox@tmpbox=\hbox{#1}%
+  \gezhu@fbox@tmpdil=\dp\gezhu@fbox@tmpbox
+  \leavevmode\rlap{\hbox to \wd\gezhu@fbox@tmpbox{\hrulefill}}\box\gezhu@fbox@tmpbox
 }
 \fi
