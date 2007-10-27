@@ -71,6 +71,9 @@
 %%                              More debug routines. Found bug in \gezhu
 %%                              when shipout level=2: should use \prevdepth
 %%                              of the last but one line, but got last line's.
+%%                              Fixed the bug of \errmessage misspelling.
+%%                              Fixed the last but one line \prevdepth bug
+%%                              by using \prevgraf and make decision.
 %%      TODO:   1. Add a more friendly interface for use under LaTeX. e.g. 
 %%                 \begin{withgezhu}[raise=-2pt,lines=2,everygezhu={\tiny}]
 %%              2. Find bugs and fix...
@@ -82,9 +85,9 @@
 \catcode`@=11
 \ifx\gezhurevision\@undefined
 \ifx\eTeXrevision\@undefined
-  \errmessge{eTeX required to use this package}
+  \errmessage{eTeX required to use this package}
 \fi
-\def\gezhurevision{2007.10.26.}
+\def\gezhurevision{2007.10.27.}
 % user configurable
 \newcount\gezhu@lines
 \newcount\gezhu@breakpenalty
@@ -254,7 +257,7 @@
   % \gezhu@bigem*(\gezhu@tmpcnt-1) < \gezhu@tmpdim
   \gezhu@tmpdil=\dimexpr\gezhu@bigem*\gezhu@tmpcnt-\gezhu@tmpdim\relax
   \ifdim\gezhu@tmpdil < 0pt
-    \errmessge{Ooops, the algorithm is wrong!}%
+    \errmessage{Ooops, the algorithm is wrong!}%
   \fi
   \ifdim\gezhu@tmpdil < 0.05\gezhu@bigem
     \gezhu@tmpdil=0pt
@@ -275,19 +278,55 @@
     \endgraf
     \setbox\gezhu@tmpbox=\lastbox
     \setbox\gezhu@tmpbox=\hbox{\unhbox\gezhu@tmpbox\unskip\unskip\unpenalty}%
-    \unskip % remove interline skip in internal vertical mode
     \ifnum\gezhu@shipoutlevel > 1\relax
       \unless\ifnum\currentgrouptype = 4 % vbox group
-        \errmessge{\string\gezhu\ cannot be used inside a group}%
+        \errmessage{\string\gezhu\ cannot be used inside a group}%
       \fi
-      \global\setbox\gezhu@tmpboy=\box\gezhu@tmpbox
-      \global\gezhu@tmpdim=\prevdepth\egroup%\prevdepth=\gezhu@tmpdim
-      \gezhu@showbox\gezhu@tmpbox\unvbox\gezhu@tmpbox
-      %\endgraf\gezhu@message{<\number\currentgrouptype>}%
-      \setbox\gezhu@tmpbox=\vbox\bgroup
-      \prevdepth=\gezhu@tmpdim
-      \setbox\gezhu@tmpbox=\box\gezhu@tmpboy
+      \gezhu@tmpcnt = \prevgraf
+      \gezhu@message{pg\number\gezhu@tmpcnt}%
+      \ifnum\gezhu@tmpcnt < 2
+        \ifnum\gezhu@tmpcnt > 0
+          \global\setbox\gezhu@tmpboy=\box\gezhu@tmpbox
+          \global\gezhu@tmpdim=\dimexpr\baselineskip - \lastskip - \ht\gezhu@tmpboy\relax
+          \unskip % remove interline skip in internal vertical mode
+          \egroup\prevdepth=\gezhu@tmpdim
+          \gezhu@showbox\gezhu@tmpbox\unvbox\gezhu@tmpbox
+          \endgraf%\gezhu@message{<\number\currentgrouptype>}%
+          \setbox\gezhu@tmpbox=\vbox\bgroup
+          \prevdepth=\gezhu@tmpdim
+          \setbox\gezhu@tmpbox=\box\gezhu@tmpboy
+        \else
+          \unskip % remove interline skip in internal vertical mode
+        \fi
+      \else
+        \unskip % remove interline skip in internal vertical mode
+        \unpenalty
+        \ifnum\lastnodetype = 1
+          \global\setbox\gezhu@tmpboz=\lastbox
+          \global\setbox\gezhu@tmpboy=\box\gezhu@tmpbox
+          \global\gezhu@tmpdim=\prevdepth\egroup
+          \gezhu@showbox\gezhu@tmpboz
+          \gezhu@showbox\gezhu@tmpbox\unvbox\gezhu@tmpbox
+          \endgraf\gezhu@message{<\number\currentgrouptype>}%
+          \setbox\gezhu@tmpbox=\vbox\bgroup
+          \setbox\gezhu@tmpbox=\box\gezhu@tmpboy
+          \box\gezhu@tmpboz
+          \vskip -\parskip
+        \else
+          \message{Unexpected lastnodetype \number\lastnodetype, should be an hbox}%
+          \global\setbox\gezhu@tmpboy=\box\gezhu@tmpbox
+          \global\gezhu@tmpdim=\dimexpr\baselineskip - \lastskip - \ht\gezhu@tmpboy\relax
+          \unskip % remove interline skip in internal vertical mode
+          \egroup\prevdepth=\gezhu@tmpdim
+          \gezhu@showbox\gezhu@tmpbox\unvbox\gezhu@tmpbox
+          \endgraf%\gezhu@message{<\number\currentgrouptype>}%
+          \setbox\gezhu@tmpbox=\vbox\bgroup
+          \prevdepth=\gezhu@tmpdim
+          \setbox\gezhu@tmpbox=\box\gezhu@tmpboy
+        \fi
+      \fi
     \else
+      \unskip % remove interline skip in internal vertical mode
       \vskip -\parskip
     \fi
     \noindent\gezhu@debug{Copy}\unhcopy\gezhu@tmpbox
