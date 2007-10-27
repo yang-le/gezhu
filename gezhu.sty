@@ -62,22 +62,36 @@
 %%                              the rest space is about 1em.
 %%                              Added simple interface to set raise and parfil.
 %%                              Finally fixed the bug of CJK char wrap.
-%%      TODO:   1. Ship every paragraph to the outter vertical list when \par
-%%                 is called, in order to save TeX's memory.
-%%              2. Add a more friendly interface for use under LaTeX. e.g. 
+%%              07.10.26.       Fixed the bug of wrong baselineskip cause by
+%%                              the raising of gezhu box. Fixed the bug of 
+%%                              wrong baselineskip before and after withgezhu.
+%%                              Successfully realized every par ship out.
+%%              07.10.27.       Added \gezhu@shipoutlevel setting, what a 
+%%                              tough work, expecially level 2!!!
+%%                              More debug routines. Found bug in \gezhu
+%%                              when shipout level=2: should use \prevdepth
+%%                              of the last but one line, but got last line's.
+%%                              Fixed the bug of \errmessage misspelling.
+%%                              Fixed the last but one line \prevdepth bug
+%%                              by using \prevgraf and make decision.
+%%      TODO:   1. Add a more friendly interface for use under LaTeX. e.g. 
 %%                 \begin{withgezhu}[raise=-2pt,lines=2,everygezhu={\tiny}]
-%%              3. Find bugs and fix...
-%%      Note:   Chances are that the texts may exceed the right boundary 
-%%              because of punctuation prohibitions.
+%%              2. Find bugs and fix...
+%%      Note:   1. Chances are that the texts may exceed the right boundary 
+%%                 because of punctuation prohibitions.
+%%              2. \gezhu@shipoutlevel  =0 :  ship out when \endwithgezhu
+%%                                      =1 :  ship out when \par
+%%                                      =2 :  ship out when \gezhu and \par
 \catcode`@=11
 \ifx\gezhurevision\@undefined
 \ifx\eTeXrevision\@undefined
-  \errmessge{eTeX required to use this package}
+  \errmessage{eTeX required to use this package}
 \fi
-\def\gezhurevision{2007.10.14.}
+\def\gezhurevision{2007.10.27.}
 % user configurable
 \newcount\gezhu@lines
 \newcount\gezhu@breakpenalty
+\newcount\gezhu@shipoutlevel
 \newskip\gezhu@cjkglue
 \newskip\gezhu@parfillskip
 \newdimen\gezhu@gezhuraise
@@ -105,14 +119,15 @@
 \newtoks\gezhu@strut
 %
 \gezhu@lines=2
+\gezhu@shipoutlevel=0
 \gezhu@cjkglue=0pt plus 0.1em minus 0.1em
-\gezhu@gezhuraise=-2pt
+\gezhu@gezhuraise=-1.5pt
 \gezhu@parfillskip=0pt
 \gezhu@breakpenalty=-\@M
 \gezhunormalizefalse
 \everywithgezhu={\gezhu@makespecials}
 \ifdefined\LaTeX
-  \everygezhu={\scriptsize}
+  \everygezhu={\tiny}
 \else
   \everygezhu={\fiverm\baselineskip=6pt}
 \fi
@@ -121,8 +136,10 @@
   \hskip 0pt plus 0.1em minus 0.01em}
 \gezhu@strut={\vphantom{()}}
 \def\gezhu@debug#1{}
+\def\gezhu@message#1{}
 \def\gezhu@showbox#1{}
 \def\gezhu@debugbox#1{#1}
+\def\gezhu@debugboy#1{#1}
 \def\gezhu@break{\gezhu@debug{Break}\penalty\gezhu@breakpenalty}
 \def\gezhu@makehboxofhboxesandcount{%
   % input:  none but previous vertical mode nodes
@@ -240,7 +257,7 @@
   % \gezhu@bigem*(\gezhu@tmpcnt-1) < \gezhu@tmpdim
   \gezhu@tmpdil=\dimexpr\gezhu@bigem*\gezhu@tmpcnt-\gezhu@tmpdim\relax
   \ifdim\gezhu@tmpdil < 0pt
-    \errmessge{Ooops, the algorithm is wrong!}%
+    \errmessage{Ooops, the algorithm is wrong!}%
   \fi
   \ifdim\gezhu@tmpdil < 0.05\gezhu@bigem
     \gezhu@tmpdil=0pt
@@ -261,8 +278,57 @@
     \endgraf
     \setbox\gezhu@tmpbox=\lastbox
     \setbox\gezhu@tmpbox=\hbox{\unhbox\gezhu@tmpbox\unskip\unskip\unpenalty}%
-    \unskip % remove interline skip in internal vertical mode
-    \vskip -\parskip
+    \ifnum\gezhu@shipoutlevel > 1\relax
+      \unless\ifnum\currentgrouptype = 4 % vbox group
+        \errmessage{\string\gezhu\ cannot be used inside a group}%
+      \fi
+      \gezhu@tmpcnt = \prevgraf
+      \gezhu@message{pg\number\gezhu@tmpcnt}%
+      \ifnum\gezhu@tmpcnt < 2
+        \ifnum\gezhu@tmpcnt > 0
+          \global\setbox\gezhu@tmpboy=\box\gezhu@tmpbox
+          \global\gezhu@tmpdim=\dimexpr\baselineskip - \lastskip - \ht\gezhu@tmpboy\relax
+          \unskip % remove interline skip in internal vertical mode
+          \egroup\prevdepth=\gezhu@tmpdim
+          \gezhu@showbox\gezhu@tmpbox\unvbox\gezhu@tmpbox
+          \endgraf%\gezhu@message{<\number\currentgrouptype>}%
+          \setbox\gezhu@tmpbox=\vbox\bgroup
+          \prevdepth=\gezhu@tmpdim
+          \setbox\gezhu@tmpbox=\box\gezhu@tmpboy
+        \else
+          \unskip % remove interline skip in internal vertical mode
+        \fi
+      \else
+        \unskip % remove interline skip in internal vertical mode
+        \unpenalty
+        \ifnum\lastnodetype = 1
+          \global\setbox\gezhu@tmpboz=\lastbox
+          \global\setbox\gezhu@tmpboy=\box\gezhu@tmpbox
+          \global\gezhu@tmpdim=\prevdepth\egroup
+          \gezhu@showbox\gezhu@tmpboz
+          \gezhu@showbox\gezhu@tmpbox\unvbox\gezhu@tmpbox
+          \endgraf\gezhu@message{<\number\currentgrouptype>}%
+          \setbox\gezhu@tmpbox=\vbox\bgroup
+          \setbox\gezhu@tmpbox=\box\gezhu@tmpboy
+          \box\gezhu@tmpboz
+          \vskip -\parskip
+        \else
+          \message{Unexpected lastnodetype \number\lastnodetype, should be an hbox}%
+          \global\setbox\gezhu@tmpboy=\box\gezhu@tmpbox
+          \global\gezhu@tmpdim=\dimexpr\baselineskip - \lastskip - \ht\gezhu@tmpboy\relax
+          \unskip % remove interline skip in internal vertical mode
+          \egroup\prevdepth=\gezhu@tmpdim
+          \gezhu@showbox\gezhu@tmpbox\unvbox\gezhu@tmpbox
+          \endgraf%\gezhu@message{<\number\currentgrouptype>}%
+          \setbox\gezhu@tmpbox=\vbox\bgroup
+          \prevdepth=\gezhu@tmpdim
+          \setbox\gezhu@tmpbox=\box\gezhu@tmpboy
+        \fi
+      \fi
+    \else
+      \unskip % remove interline skip in internal vertical mode
+      \vskip -\parskip
+    \fi
     \noindent\gezhu@debug{Copy}\unhcopy\gezhu@tmpbox
     \the\beforegezhu
     \def\gezhu@tmpmacro{\setbox\gezhu@tmpboy=\hbox{\hskip 1em}}\gezhu@tmpmacro
@@ -310,7 +376,8 @@
         \global\setbox\gezhu@tmpb@y=\box\gezhu@tmpb@y
       }%
       \ifdim\wd\gezhu@tmpb@x > 0pt
-        \raise\gezhu@gezhuraise\hbox{\gezhu@debugbox{\box\gezhu@tmpb@x}}%
+        \setbox0=\hbox{\raise\gezhu@gezhuraise\hbox{\gezhu@debugbox{\box\gezhu@tmpb@x}}}%
+        \ht0=0pt\dp0=0pt\gezhu@debugboy{\box0}%
         \gezhu@break
         \gezhu@leftspace=\hsize
       \fi
@@ -347,7 +414,8 @@
       }%
       \ifdim\wd\gezhu@tmpb@x > 0pt% enough for construct a whole big line
         \setbox\gezhu@tmpbox=\hbox{\box\gezhu@tmpb@x}%
-        \raise\gezhu@gezhuraise\hbox{\gezhu@debugbox{\box\gezhu@tmpbox}}%
+        \setbox0=\hbox{\raise\gezhu@gezhuraise\hbox{\gezhu@debugbox{\box\gezhu@tmpbox}}}%
+        \ht0=0pt\dp0=0pt\gezhu@debugboy{\box0}%
         \gezhu@break
         \gezhu@leftspace=\hsize
     \repeat
@@ -443,7 +511,8 @@
         %\setbox\gezhu@tmpb@y=\hbox{\unhbox\gezhu@tmpb@y\hbox{\the\gezhu@strut}}%
         \setbox\gezhu@tmpb@x=\vbox{\unvbox\gezhu@tmpb@x\vskip\baselineskip}%
     \repeat
-    \raise\gezhu@gezhuraise\hbox{\gezhu@debugbox{\box\gezhu@tmpb@x}}%
+    \setbox0=\hbox{\raise\gezhu@gezhuraise\hbox{\gezhu@debugbox{\box\gezhu@tmpb@x}}}%
+    \ht0=0pt\dp0=0pt\gezhu@debugboy{\box0}%
     \ifgezhunormalize
       \gezhu@debug{\raise-3pt\hbox{\the\gezhu@tmpdim}}%
       \gezhu@normalize % output in \gezhu@tmpdil
@@ -453,35 +522,73 @@
       \fi
     \fi
     \endgroup
-    \the\aftergezhu
+    \the\aftergezhu\relax
   }%
   \let\gezhu@oldpar\par
-  \def\par{\unpenalty\unskip\unpenalty\unskip\unpenalty\gezhu@oldpar
-    %\egroup
-    %\unvbox\gezhu@tmpbox\leavevmode\endgraf\setbox\gezhu@tmpbox=\vbox\bgroup
+  \ifnum\gezhu@shipoutlevel > 0\relax
+    \def\par{\unpenalty\unskip\unpenalty\unskip\unpenalty\gezhu@oldpar
+      \global\gezhu@tmpdim=\prevdepth\egroup\prevdepth=\gezhu@tmpdim
+      \gezhu@showbox\gezhu@tmpbox\unvbox\gezhu@tmpbox
+      \endgraf%\gezhu@message{(\number\currentgrouptype)}%
+      \setbox\gezhu@tmpbox=\vbox\bgroup
+      \prevdepth=\gezhu@tmpdim
+      \ifdim\gezhu@tmpdim > -1000pt
+        \vskip 0pt% par skip go go go 
+      \fi
     }%
+  \else
+    \def\par{\ifhmode\unpenalty\unskip\unpenalty\unskip\unpenalty\fi\gezhu@oldpar}%
+  \fi
+  \endgraf
   \the\everywithgezhu
+  \ifdim\prevdepth = 0pt% we assume that it is the beginning of the page
+    \gezhu@tmpdim=-1000pt
+  \else
+    \gezhu@tmpdim=\prevdepth
+  \fi
   \setbox\gezhu@tmpbox=\vbox\bgroup
+  \let\withgezhu\relax
+  \ifdim\gezhu@tmpdim > -1000pt
+    \prevdepth=\gezhu@tmpdim
+    \vskip 0pt% par skip go go go 
+  \fi
 }
-\def\endwithgezhu{\egroup\gezhu@showbox\gezhu@tmpbox\unvbox\gezhu@tmpbox\endgroup}
-\def\setgezhulines#1{\gezhu@lines=#1\relax}
-\def\setgezhuraise#1{\gezhu@gezhuraise=#1\relax}
-\def\gezhuraggedtrue{\gezhu@parfillskip=0pt plus 1fil\relax}
-\def\gezhuraggedfalse{\gezhu@parfillskip=0pt\relax}
+\def\endwithgezhu{%
+  \ifnum\gezhu@shipoutlevel > 0
+    \par\egroup
+  \else
+      \gezhu@oldpar\global\gezhu@tmpdim=\prevdepth\egroup\prevdepth=\gezhu@tmpdim
+      \gezhu@showbox\gezhu@tmpbox\unvbox\gezhu@tmpbox
+  \fi
+  \endgroup
+}
+\def\setgezhulines#1{\global\gezhu@lines=#1\relax}
+\def\setgezhuraise#1{\global\gezhu@gezhuraise=#1\relax}
+\def\setgezhushipoutlevel#1{\global\gezhu@shipoutlevel=#1\relax}
+\def\gezhuraggedtrue{\global\gezhu@parfillskip=0pt plus 1fil\relax}
+\def\gezhuraggedfalse{\global\gezhu@parfillskip=0pt\relax}
 % fbox
 \newbox\gezhu@fbox@tmpbox
 \newdimen\gezhu@fbox@linewidth
 \newdimen\gezhu@fbox@tmpdim
+\newdimen\gezhu@fbox@tmpdil
 \gezhu@fbox@linewidth=0.4pt
 \long\def\gezhu@fbox#1{%
   \setbox\gezhu@fbox@tmpbox=\hbox{#1}%
   \gezhu@fbox@tmpdim=2\gezhu@fbox@linewidth
+  \gezhu@fbox@tmpdil=\dp\gezhu@fbox@tmpbox
   \advance\gezhu@fbox@tmpdim\wd\gezhu@fbox@tmpbox
-  \leavevmode\hbox{\hskip-\gezhu@fbox@linewidth\vbox{\vskip
+  \setbox\gezhu@fbox@tmpbox=\hbox{\hskip-\gezhu@fbox@linewidth\vbox{\vskip
   -\gezhu@fbox@linewidth\hrule height \gezhu@fbox@linewidth width \gezhu@fbox@tmpdim
   \hbox{\vrule width \gezhu@fbox@linewidth height \ht\gezhu@fbox@tmpbox
   \unhcopy\gezhu@fbox@tmpbox\vrule width \gezhu@fbox@linewidth height \ht\gezhu@fbox@tmpbox}%
   \hrule height \gezhu@fbox@linewidth width \gezhu@fbox@tmpdim
   \vskip -\gezhu@fbox@linewidth}\hskip-\gezhu@fbox@linewidth}%
+  \leavevmode\raise-\gezhu@fbox@tmpdil\box\gezhu@fbox@tmpbox
+}
+\long\def\gezhu@baselinebox#1{%
+  \setbox\gezhu@fbox@tmpbox=\hbox{#1}%
+  \gezhu@fbox@tmpdil=\dp\gezhu@fbox@tmpbox
+  \leavevmode\rlap{\hbox to \wd\gezhu@fbox@tmpbox{\hrulefill}}\box\gezhu@fbox@tmpbox
 }
 \fi
