@@ -520,24 +520,24 @@
       \global\setbox\gezhu@tmpb@y=\box\gezhu@tmpb@y
     }%
     % now \gezhu@tmpb@y is the hbox of hboxes with interlineskip
-    %% next find the longest line width when break with hsize=\gezhu@tmpdim
-    %\gezhu@tmpdil=\gezhu@tmpdim
-    %\setbox\gezhu@tmpboy=\vbox{%
-    %  \hskip 0pt
-    %  \unhcopy\gezhu@tmpb@y
-    %  \loop
-    %    \ifnum\lastnodetype = 11%  inter line skip
-    %      \unskip
-    %    \fi
-    %    \setbox\gezhu@tmpb@x=\lastbox
-    %    \ifhbox\gezhu@tmpb@x
-    %      \setbox\gezhu@tmpb@x=\hbox{\unhbox\gezhu@tmpb@x}%
-    %      \ifdim\gezhu@tmpdil < \wd\gezhu@tmpb@x
-    %        \global\gezhu@tmpdil=\wd\gezhu@tmpb@x
-    %      \fi
-    %  \repeat
-    %  \unskip
-    %}%
+    % next find the longest line width when break with hsize=\gezhu@tmpdim
+    \gezhu@tmpdil=\gezhu@tmpdim
+    \setbox\gezhu@tmpboy=\vbox{%
+      \hskip 0pt
+      \unhcopy\gezhu@tmpb@y
+      \loop
+        \ifnum\lastnodetype = 11%  inter line skip
+          \unskip
+        \fi
+        \setbox\gezhu@tmpb@x=\lastbox
+        \ifhbox\gezhu@tmpb@x
+          \setbox\gezhu@tmpb@x=\hbox{\unhbox\gezhu@tmpb@x}%
+          \ifdim\gezhu@tmpdil < \wd\gezhu@tmpb@x
+            \global\gezhu@tmpdil=\wd\gezhu@tmpb@x
+          \fi
+      \repeat
+      \unskip
+    }%
     % next, compensate for empty lines
     {\gezhu@getfirsthboxes{0}\global\setbox\gezhu@tmpb@x=\box\gezhu@tmpb@x}%
     \loop
@@ -549,16 +549,18 @@
     % now \gezhu@tmpb@x is the gezhu box
     \setbox0=\hbox{\raise\gezhu@gezhuraise\hbox{\gezhu@debugbox{\box\gezhu@tmpb@x}}}%
     \ht0=0pt\dp0=0pt\gezhu@debugboy{\box0}%
-    %\advance\gezhu@tmpdil by -\gezhu@tmpdim
-    %\ifdim\gezhu@tmpdil > 0.45\gezhu@smallem
-    %  \hskip 0.0\gezhu@tmpdil plus 0.5\gezhu@tmpdil
-    %\fi
     \ifgezhunormalize
       \gezhu@debug{\raise-3pt\hbox{\the\gezhu@tmpdim}}%
       \gezhu@normalize % output in \gezhu@tmpdil
       \ifdim\gezhu@tmpdil > 0pt
-        \kern\gezhu@tmpdil
+        \nobreak\kern\gezhu@tmpdil
         \gezhu@debug{\raise 8pt\hbox{\the\gezhu@tmpdil, \the\gezhu@bigem}}%
+      \fi
+    \else
+      \advance\gezhu@tmpdil by -\gezhu@tmpdim
+      \ifdim\gezhu@tmpdil > 0.45\gezhu@smallem
+	\nobreak\hskip 0.7\gezhu@tmpdil plus 0.3\gezhu@tmpdil minus 0.7\gezhu@tmpdil
+	\advance\gezhu@tmpdim by 0.7\gezhu@tmpdil
       \fi
     \fi
     \endgroup
