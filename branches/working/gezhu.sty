@@ -79,6 +79,8 @@
 %%                              than one_line_width/\gezhu@lines. Added 
 %%                              \lineskiplimit settings. Fixed bug of too much
 %%                              space when normailze sometimes.
+%%              07.11.06.       Uncommented last change. Fixed some bugs. Fine
+%%                              tuned a bit.
 %%      TODO:   1. Add a more friendly interface for use under LaTeX. e.g. 
 %%                 \begin{withgezhu}[raise=-2pt,lines=2,everygezhu={\tiny}]
 %%              2. Find bugs and fix...
@@ -92,7 +94,7 @@
 \ifx\eTeXrevision\@undefined
   \errmessage{eTeX required to use this package}
 \fi
-\def\gezhurevision{2007.11.05.}
+\def\gezhurevision{2007.11.06.}
 % user configurable
 \newcount\gezhu@lines
 \newcount\gezhu@breakpenalty
@@ -352,9 +354,9 @@
     \gezhu@leftspace=\dimexpr\hsize - \wd\gezhu@tmpbox\relax
     % now \gezhu@leftspace is the width of the rest blank space of the line
     \ifdim\gezhu@leftspace > 0.9\gezhu@smallem % annotations at the end of line
-      \ifdim\gezhu@leftspace > 1.3\gezhu@smallem
+      \ifdim\gezhu@leftspace > 1.5\gezhu@smallem
         \ifdim\gezhu@leftspace < 2\gezhu@smallem
-          \gezhu@leftspace = 2\gezhu@smallem
+          \gezhu@leftspace = 1.9\gezhu@smallem
         \fi
       \else
         \gezhu@leftspace = 0.99\gezhu@smallem
@@ -488,13 +490,16 @@
     \ifdim\gezhu@tmpdil > 0.45\gezhu@smallem
       \advance\gezhu@tmpdim by \gezhu@tmpdil
     \fi
-    %% normalize special treatment
-    %\ifgezhunormalize
-    %  \gezhu@normalize % output in \gezhu@tmpdil
-    %  \ifdim\gezhu@tmpdil > 0.95\gezhu@bigem
-    %    \gezhu@tmpdim=\dimexpr\gezhu@tmpdim+\gezhu@tmpdil-\gezhu@bigem\relax
-    %  \fi
-    %\fi
+    % normalize special treatment
+    \ifgezhunormalize
+      \gezhu@normalize % output in \gezhu@tmpdil
+      \ifdim\gezhu@tmpdil < \dimexpr\gezhu@bigem/(\numexpr\gezhu@lines+1)\relax
+        \gezhu@tmpdim=\dimexpr\gezhu@tmpdim+\gezhu@tmpdil\relax
+      \fi
+      \ifdim\gezhu@tmpdil > 0.9\gezhu@bigem
+        \gezhu@tmpdim=\dimexpr\gezhu@tmpdim+\gezhu@tmpdil-\gezhu@bigem\relax
+      \fi
+    \fi
     % left space test
     \ifdim\gezhu@tmpdim > \gezhu@leftspace
       \gezhu@tmpdim=\gezhu@leftspace
@@ -515,6 +520,24 @@
       \global\setbox\gezhu@tmpb@y=\box\gezhu@tmpb@y
     }%
     % now \gezhu@tmpb@y is the hbox of hboxes with interlineskip
+    %% next find the longest line width when break with hsize=\gezhu@tmpdim
+    %\gezhu@tmpdil=\gezhu@tmpdim
+    %\setbox\gezhu@tmpboy=\vbox{%
+    %  \hskip 0pt
+    %  \unhcopy\gezhu@tmpb@y
+    %  \loop
+    %    \ifnum\lastnodetype = 11%  inter line skip
+    %      \unskip
+    %    \fi
+    %    \setbox\gezhu@tmpb@x=\lastbox
+    %    \ifhbox\gezhu@tmpb@x
+    %      \setbox\gezhu@tmpb@x=\hbox{\unhbox\gezhu@tmpb@x}%
+    %      \ifdim\gezhu@tmpdil < \wd\gezhu@tmpb@x
+    %        \global\gezhu@tmpdil=\wd\gezhu@tmpb@x
+    %      \fi
+    %  \repeat
+    %  \unskip
+    %}%
     % next, compensate for empty lines
     {\gezhu@getfirsthboxes{0}\global\setbox\gezhu@tmpb@x=\box\gezhu@tmpb@x}%
     \loop
@@ -526,6 +549,10 @@
     % now \gezhu@tmpb@x is the gezhu box
     \setbox0=\hbox{\raise\gezhu@gezhuraise\hbox{\gezhu@debugbox{\box\gezhu@tmpb@x}}}%
     \ht0=0pt\dp0=0pt\gezhu@debugboy{\box0}%
+    %\advance\gezhu@tmpdil by -\gezhu@tmpdim
+    %\ifdim\gezhu@tmpdil > 0.45\gezhu@smallem
+    %  \hskip 0.0\gezhu@tmpdil plus 0.5\gezhu@tmpdil
+    %\fi
     \ifgezhunormalize
       \gezhu@debug{\raise-3pt\hbox{\the\gezhu@tmpdim}}%
       \gezhu@normalize % output in \gezhu@tmpdil
