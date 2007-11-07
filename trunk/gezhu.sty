@@ -81,6 +81,8 @@
 %%                              space when normailze sometimes.
 %%              07.11.06.       Uncommented last change. Fixed some bugs. Fine
 %%                              tuned a bit.
+%%              07.11.07.       Use \numexpr instead of binary search to find 
+%%                              normalization dimension.
 %%      TODO:   1. Add a more friendly interface for use under LaTeX. e.g. 
 %%                 \begin{withgezhu}[raise=-2pt,lines=2,everygezhu={\tiny}]
 %%              2. Find bugs and fix...
@@ -94,7 +96,7 @@
 \ifx\eTeXrevision\@undefined
   \errmessage{eTeX required to use this package}
 \fi
-\def\gezhurevision{2007.11.06.}
+\def\gezhurevision{2007.11.07.}
 % user configurable
 \newcount\gezhu@lines
 \newcount\gezhu@breakpenalty
@@ -239,32 +241,10 @@
   % output: \gezhu@tmpdil as the adjustment length, which equals to
   %             \gezhu@bigem * ceil(#1 / \gezhu@bigem) - #1
   % uses:   \gezhu@tmpcnt, \gezhu@tmpcns, \loop
-  % first binary search to find ceil(#1 / \gezhu@bigem)
-  \gezhu@tmpcnt=1
-  \loop
-    \ifdim\dimexpr\gezhu@bigem*\gezhu@tmpcnt < \gezhu@tmpdim
-      \multiply\gezhu@tmpcnt by 2
-  \repeat
-  \divide\gezhu@tmpcnt by 2\relax
-  % now \gezhu@bigem*\gezhu@tmpcnt*2 >= \gezhu@tmpdim
-  \gezhu@tmpcns=\gezhu@tmpcnt
-  \loop
-    \ifdim\dimexpr\gezhu@bigem*\numexpr(\gezhu@tmpcnt+\gezhu@tmpcns) 
-        > \gezhu@tmpdim
-      \divide\gezhu@tmpcns by 2
-  \repeat
-  % now \gezhu@bigem*(\gezhu@tmpcnt+\gezhu@tmpcns) <= \gezhu@tmpdim
-  \advance\gezhu@tmpcnt by \gezhu@tmpcns
-  \loop
-    \ifdim\dimexpr\gezhu@bigem*\gezhu@tmpcnt
-        < \gezhu@tmpdim
-      \advance\gezhu@tmpcnt by 1
-  \repeat
-  % now \gezhu@bigem*\gezhu@tmpcnt >= \gezhu@tmpdim
-  % \gezhu@bigem*(\gezhu@tmpcnt-1) < \gezhu@tmpdim
+  \gezhu@tmpcnt=\numexpr\number\gezhu@tmpdim/\number\gezhu@bigem\relax
   \gezhu@tmpdil=\dimexpr\gezhu@bigem*\gezhu@tmpcnt-\gezhu@tmpdim\relax
   \ifdim\gezhu@tmpdil < 0pt
-    \errmessage{Ooops, the algorithm is wrong!}%
+    \advance\gezhu@tmpdil by \gezhu@bigem
   \fi
 }
 {
