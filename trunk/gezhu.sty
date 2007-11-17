@@ -83,6 +83,7 @@
 %%                              tuned a bit.
 %%              07.11.07.       Use \numexpr instead of binary search to find 
 %%                              normalization dimension.
+%%              07.11.17.       Fixed the bug of \gezhu at the start of para.
 %%      TODO:   1. Add a more friendly interface for use under LaTeX. e.g. 
 %%                 \begin{withgezhu}[raise=-2pt,lines=2,everygezhu={\tiny}]
 %%              2. Find bugs and fix...
@@ -259,6 +260,7 @@
   \showboxdepth=999
   \hbadness=\@M\hfuzz=0.4em
   \def\gezhu##1{%
+    \leavevmode
     \endgraf
     \setbox\gezhu@tmpbox=\lastbox
     \setbox\gezhu@tmpbox=\hbox{\unhbox\gezhu@tmpbox\unskip\unskip\unpenalty}%
